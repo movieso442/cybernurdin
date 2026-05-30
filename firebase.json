@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "myportforlio-39fde",
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

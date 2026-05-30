@@ -1,0 +1,895 @@
+# SOFTWARE REQUIREMENTS SPECIFICATION
+
+## Project Title: Cybersecurity Mentorship Platform
+
+## Version: 2.0
+
+## Focus: Cybersecurity-Only Guided Mentorship System
+
+---
+
+# 1. INTRODUCTION
+
+## 1.1 Purpose
+
+This document defines the requirements for a cybersecurity-focused mentorship platform where learners apply, get reviewed, receive access, choose or are assigned one cybersecurity path, study guided content, watch embedded YouTube videos, view slides, take quizzes, and progress through structured learning.
+
+The platform is not a general academy. It is a selective cybersecurity mentorship system.
+
+## 1.2 Scope
+
+The system will support:
+
+* Cybersecurity-only mentorship paths
+* Application-based access
+* Coupon-based login
+* Single active path per mentee
+* Admin-controlled path assignment
+* YouTube-based video learning
+* Slide-based lesson viewing
+* Quizzes after lessons or modules
+* Guided progress tracking
+* Completion-based next-path assignment
+* Admin management of mentees, paths, videos, slides, quizzes, and progress
+
+---
+
+# 2. PRODUCT VISION
+
+The platform should feel like a guided cybersecurity mentorship journey.
+
+A mentee should feel:
+
+* “I know exactly what to learn next.”
+* “I am not watching random videos.”
+* “My learning is structured.”
+* “My mentor controls my path.”
+* “When I finish one path, I can be assigned another.”
+
+The system should not feel like:
+
+* a generic LMS
+* a course marketplace
+* a random file library
+* an open YouTube playlist
+
+---
+
+# 3. CORE USER FLOW
+
+## 3.1 Visitor Flow
+
+Visitor lands on mentorship page
+→ explores cybersecurity paths
+→ applies for mentorship
+→ waits for review
+→ receives approval and coupon
+→ logs in
+→ accesses assigned cybersecurity path
+
+## 3.2 Mentee Flow
+
+Mentee logs in
+→ sees active cybersecurity path
+→ watches YouTube lessons
+→ views slides
+→ completes quizzes
+→ tracks progress
+→ completes path
+→ waits for admin to assign next path
+
+## 3.3 Admin Flow
+
+Admin logs in
+→ reviews applications
+→ approves/rejects applicants
+→ generates coupon
+→ assigns one cybersecurity path
+→ monitors progress
+→ reviews completion
+→ assigns next path when ready
+
+---
+
+# 4. CORE BUSINESS RULES
+
+BR-1: The platform focuses only on cybersecurity mentorship.
+
+BR-2: A mentee can have only one active cybersecurity path at a time.
+
+BR-3: A mentee may choose a preferred path during application, but final assignment is controlled by admin.
+
+BR-4: Admin can assign another path only after the current path is completed or manually closed.
+
+BR-5: A user cannot access mentorship content without approval and valid coupon login.
+
+BR-6: YouTube videos must be embedded inside the platform so views count on YouTube.
+
+BR-7: Slides must be viewable inside the platform.
+
+BR-8: Quizzes must be attached to modules or lessons.
+
+BR-9: Progress must be tracked per path, module, lesson, video, slide, and quiz.
+
+BR-10: Admin can unlock, revoke, pause, or complete a mentee’s assigned path.
+
+---
+
+# 5. USER CLASSES
+
+## 5.1 Visitor
+
+Can:
+
+* view public mentorship page
+* preview cybersecurity paths
+* apply
+
+Cannot:
+
+* access lessons
+* watch protected learning videos inside dashboard
+* take quizzes
+* access slides
+
+## 5.2 Applicant
+
+Can:
+
+* submit application
+* view pending status
+
+Cannot:
+
+* access mentorship dashboard until approved
+
+## 5.3 Mentee
+
+Can:
+
+* access assigned cybersecurity path
+* watch YouTube lesson videos
+* view slides
+* complete quizzes
+* view progress
+* book sessions if enabled
+
+Cannot:
+
+* access unassigned paths
+* self-unlock another path
+* skip required quizzes if progression rules apply
+
+## 5.4 Admin / Mentor
+
+Can:
+
+* review applications
+* approve or reject users
+* create coupons
+* assign paths
+* manage cybersecurity content
+* upload or link slides
+* add YouTube video links
+* create quizzes
+* monitor progress
+* assign next path
+
+---
+
+# 6. CYBERSECURITY MENTORSHIP PATHS
+
+The system will support multiple cybersecurity paths.
+
+Example paths:
+
+1. Introduction to Cybersecurity
+2. Network Security
+3. SOC Analyst Foundation
+4. Ethical Hacking Foundations
+5. Web Application Security
+6. Cloud Security Basics
+7. Digital Forensics Introduction
+8. Incident Response
+9. Governance, Risk, and Compliance
+10. Cybersecurity Career Preparation
+
+Each path will contain:
+
+* overview
+* outcomes
+* modules
+* lessons
+* YouTube videos
+* slides
+* quizzes
+* completion rules
+
+---
+
+# 7. SINGLE ACTIVE PATH MODEL
+
+## 7.1 Description
+
+Each mentee can only study one active path at a time.
+
+Example:
+
+A student starts:
+
+Introduction to Cybersecurity
+
+After completion, admin may assign:
+
+SOC Analyst Foundation
+
+This creates a controlled guided journey.
+
+## 7.2 Functional Requirements
+
+FR-1: System shall allow a mentee to have only one active path.
+
+FR-2: System shall allow completed paths to remain visible as history.
+
+FR-3: System shall prevent a mentee from opening unassigned paths.
+
+FR-4: Admin shall be able to assign a new path after completion.
+
+FR-5: Admin shall be able to override and assign another path manually.
+
+FR-6: Mentee may request the next path after completion.
+
+---
+
+# 8. APPLICATION SYSTEM
+
+## 8.1 Application Fields
+
+The application form shall collect:
+
+* full name
+* email
+* phone
+* country
+* age
+* cybersecurity experience level
+* preferred path
+* reason for applying
+* career goal
+* weekly availability
+* device/internet access
+* password
+* confirmation password
+
+## 8.2 Application Status
+
+Application statuses:
+
+* Pending
+* Under Review
+* Approved
+* Rejected
+
+## 8.3 Functional Requirements
+
+FR-7: Visitor shall apply before accessing mentorship.
+
+FR-8: Admin shall review applications.
+
+FR-9: Admin shall approve or reject applications.
+
+FR-10: On approval, system shall generate coupon.
+
+FR-11: Approved applicant shall be assigned one cybersecurity path.
+
+---
+
+# 9. COUPON-BASED LOGIN
+
+## 9.1 Login Fields
+
+Mentee login requires:
+
+* email or username
+* password
+* coupon code
+
+## 9.2 Functional Requirements
+
+FR-12: System shall block login without coupon.
+
+FR-13: System shall validate coupon before granting access.
+
+FR-14: Coupon shall be linked to approved user.
+
+FR-15: Coupon shall be linked to access type: Cybersecurity Mentorship.
+
+FR-16: System shall reject expired, inactive, or invalid coupons.
+
+---
+
+# 10. CONTENT STRUCTURE
+
+## 10.1 Hierarchy
+
+Cybersecurity Path
+→ Module
+→ Lesson
+→ YouTube Video
+→ Slides
+→ Quiz
+→ Completion
+
+## 10.2 Path Entity
+
+Each path shall contain:
+
+* title
+* slug
+* description
+* level
+* estimated duration
+* outcomes
+* modules
+* active status
+* order
+
+## 10.3 Module Entity
+
+Each module shall contain:
+
+* title
+* description
+* order
+* lessons
+* quiz
+* unlock rule
+
+## 10.4 Lesson Entity
+
+Each lesson shall contain:
+
+* title
+* description
+* YouTube video link
+* slide resource
+* reading content
+* estimated duration
+* completion status
+
+---
+
+# 11. YOUTUBE VIDEO LEARNING SYSTEM
+
+## 11.1 Description
+
+All platform videos shall come from YouTube. The platform embeds the videos so learners can watch inside the mentorship dashboard while YouTube views still increase.
+
+## 11.2 Functional Requirements
+
+FR-17: Admin shall add YouTube video URL or video ID to a lesson.
+
+FR-18: System shall embed YouTube video inside lesson page.
+
+FR-19: Mentee shall watch video within the platform.
+
+FR-20: System shall store video metadata including title, duration, video ID, and lesson ID.
+
+FR-21: System shall allow admin to reorder videos inside modules.
+
+FR-22: System shall allow a lesson to contain one or more videos.
+
+FR-23: System shall not host videos directly unless future requirements change.
+
+## 11.3 Video Lesson UI
+
+The video page shall include:
+
+* embedded YouTube player
+* lesson title
+* lesson summary
+* slides panel
+* next lesson button
+* mark as complete button
+* quiz button if available
+* progress indicator
+
+---
+
+# 12. SLIDE VIEWING SYSTEM
+
+## 12.1 Description
+
+Slides are used as structured lesson materials. A mentee should view slides directly in the platform.
+
+## 12.2 Supported Slide Types
+
+The system may support:
+
+* PDF slides
+* image-based slides
+* embedded Google Slides
+* HTML lesson slides
+* uploaded presentation files converted to PDF later
+
+## 12.3 Functional Requirements
+
+FR-24: Admin shall upload or link slides to a lesson.
+
+FR-25: Mentee shall view slides inside the lesson page.
+
+FR-26: Slide viewer shall allow next/previous navigation.
+
+FR-27: Slide viewer shall work on desktop and mobile.
+
+FR-28: System shall track whether the slide lesson has been completed.
+
+## 12.4 Slide UI Requirements
+
+Slide viewer shall include:
+
+* slide title
+* progress count
+* next/previous controls
+* fullscreen option if possible
+* related video beside or above slides
+* quiz access after lesson completion
+
+---
+
+# 13. QUIZ SYSTEM
+
+## 13.1 Description
+
+Quizzes validate understanding before progression.
+
+## 13.2 Question Types
+
+The system shall support:
+
+* multiple choice
+* true/false
+* short answer
+
+Future support:
+
+* scenario-based cybersecurity questions
+* lab-based questions
+* practical SOC analysis tasks
+
+## 13.3 Functional Requirements
+
+FR-29: Admin shall create quizzes per lesson or module.
+
+FR-30: Quiz shall have passing score.
+
+FR-31: System shall auto-grade objective questions.
+
+FR-32: System shall record quiz attempts.
+
+FR-33: System shall display score after submission.
+
+FR-34: System shall unlock next module only after passing quiz if required.
+
+FR-35: Admin shall configure retake policy.
+
+## 13.4 Quiz UI
+
+Quiz page shall show:
+
+* quiz title
+* number of questions
+* progress through quiz
+* selected answers
+* submit button
+* score result
+* pass/fail message
+* retry option if allowed
+
+---
+
+# 14. PROGRESS TRACKING
+
+## 14.1 Description
+
+The platform must track mentee progress across assigned path.
+
+## 14.2 Tracked Items
+
+The system shall track:
+
+* path progress
+* module progress
+* lesson completion
+* video completion status
+* slide completion status
+* quiz attempts
+* quiz pass/fail status
+* current lesson
+* completed paths
+* assigned next path status
+
+## 14.3 Functional Requirements
+
+FR-36: System shall calculate progress percentage.
+
+FR-37: Mentee shall see current progress.
+
+FR-38: Admin shall see progress per mentee.
+
+FR-39: System shall mark path complete when all required modules are complete.
+
+FR-40: System shall notify admin when mentee completes a path.
+
+---
+
+# 15. MENTEE DASHBOARD
+
+## 15.1 Dashboard Purpose
+
+The dashboard should answer:
+
+“What should I do next?”
+
+## 15.2 Dashboard Sections
+
+The mentee dashboard shall display:
+
+* active cybersecurity path
+* current module
+* next lesson
+* progress percentage
+* pending quiz
+* completed modules
+* locked modules
+* mentorship session button
+* path completion status
+
+## 15.3 UI Requirements
+
+The dashboard should feel:
+
+* guided
+* clean
+* interactive
+* structured
+* similar to NetAcad-style progression
+
+It should not feel like a folder of random files.
+
+---
+
+# 16. PATH VIEW
+
+## 16.1 Description
+
+The path page shows the complete structure of the assigned path.
+
+## 16.2 Required Elements
+
+The path view shall include:
+
+* path title
+* path description
+* expected outcome
+* module list
+* locked/unlocked states
+* completion status
+* progress bar
+* continue button
+
+## 16.3 Module States
+
+Modules may be:
+
+* locked
+* available
+* in progress
+* completed
+
+---
+
+# 17. LESSON VIEW
+
+## 17.1 Description
+
+The lesson view is where mentees consume learning content.
+
+## 17.2 Required Elements
+
+Each lesson page shall include:
+
+* lesson title
+* embedded YouTube video
+* slide viewer
+* lesson notes
+* completion button
+* next/previous navigation
+* quiz link
+* progress indicator
+
+---
+
+# 18. ADMIN DASHBOARD
+
+## 18.1 Admin Core Sections
+
+Admin dashboard shall include:
+
+* overview
+* applications
+* mentees
+* cybersecurity paths
+* modules
+* lessons
+* videos
+* slides
+* quizzes
+* progress
+* coupons
+* bookings
+
+## 18.2 Admin Capabilities
+
+Admin can:
+
+* approve applications
+* create coupon
+* assign first path
+* view mentee progress
+* create cybersecurity path
+* add modules
+* add YouTube videos
+* upload/link slides
+* create quizzes
+* assign next path
+* pause or revoke access
+
+---
+
+# 19. PATH ASSIGNMENT SYSTEM
+
+## 19.1 Description
+
+Admin controls which path a mentee studies.
+
+## 19.2 Functional Requirements
+
+FR-41: Admin shall assign one active path to a mentee.
+
+FR-42: Admin shall view completed paths before assigning new one.
+
+FR-43: Admin shall assign next path after completion.
+
+FR-44: Admin shall manually override active path if necessary.
+
+FR-45: System shall prevent duplicate active paths.
+
+FR-46: System shall store assignment history.
+
+---
+
+# 20. CONTENT SEEDING SYSTEM
+
+## 20.1 Description
+
+Existing cybersecurity documents and quizzes from the resources folder should be converted into structured mentorship content.
+
+## 20.2 Functional Requirements
+
+FR-47: System shall read local cybersecurity resource documents.
+
+FR-48: System shall convert documents into structured path/module/lesson records.
+
+FR-49: System shall extract or preserve quizzes from the end of documents.
+
+FR-50: System shall seed structured content into Firestore.
+
+FR-51: System shall avoid duplicate seeding.
+
+FR-52: Admin shall be able to edit seeded content later.
+
+---
+
+# 21. FIRESTORE DATA MODEL
+
+## 21.1 Collections
+
+Recommended collections:
+
+* users
+* applications
+* coupons
+* mentorshipPaths
+* pathAssignments
+* modules
+* lessons
+* videos
+* slides
+* quizzes
+* questions
+* quizAttempts
+* progress
+* bookings
+* notifications
+
+## 21.2 users
+
+Fields:
+
+* id
+* fullName
+* email
+* username
+* role
+* status
+* activePathId
+* completedPathIds
+* createdAt
+* updatedAt
+
+## 21.3 mentorshipPaths
+
+Fields:
+
+* id
+* title
+* slug
+* description
+* level
+* estimatedDuration
+* order
+* isPublished
+* createdAt
+
+## 21.4 pathAssignments
+
+Fields:
+
+* id
+* userId
+* pathId
+* status
+* assignedBy
+* assignedAt
+* completedAt
+* revokedAt
+
+Status values:
+
+* active
+* completed
+* paused
+* revoked
+
+## 21.5 lessons
+
+Fields:
+
+* id
+* moduleId
+* title
+* description
+* youtubeVideoId
+* slideUrl
+* content
+* order
+* isRequired
+
+## 21.6 progress
+
+Fields:
+
+* id
+* userId
+* pathId
+* moduleId
+* lessonId
+* videoCompleted
+* slidesCompleted
+* quizPassed
+* completionPercent
+* updatedAt
+
+---
+
+# 22. UI/UX REQUIREMENTS
+
+## 22.1 Visual Style
+
+The platform should use the ShieldWave-style brand identity:
+
+* deep blue
+* orange accent
+* cream background
+* premium cybersecurity feel
+* clean dashboard structure
+
+## 22.2 Mentee Experience
+
+The mentee section should feel like:
+
+* guided cybersecurity path
+* clear roadmap
+* progress visible
+* next action obvious
+* content organized
+* interactive learning environment
+
+## 22.3 Admin Experience
+
+Admin should feel:
+
+* in control
+* able to guide mentees
+* able to assign paths
+* able to track completion
+
+---
+
+# 23. SECURITY REQUIREMENTS
+
+SR-1: Only approved users can log in.
+
+SR-2: Coupon required for login.
+
+SR-3: Only assigned path is accessible.
+
+SR-4: Admin routes protected.
+
+SR-5: Users cannot access unassigned path URLs manually.
+
+SR-6: Firestore rules must enforce access control.
+
+SR-7: Quiz answers must not be exposed before submission.
+
+SR-8: Admin actions must be logged.
+
+---
+
+# 24. DEPLOYMENT REQUIREMENTS
+
+The system should be deployable using:
+
+* React / Next.js
+* Firebase App Hosting
+* Firestore
+* Firebase Storage
+* YouTube embeds
+
+---
+
+# 25. FUTURE ENHANCEMENTS
+
+Future improvements may include:
+
+* certificates after path completion
+* live mentorship rooms
+* cohort-based mentorship
+* leaderboard
+* discussion forums
+* SOC simulation labs
+* CTF-style challenges
+* AI cybersecurity assistant
+* YouTube playlist sync
+* automated video indexing
+* practical lab grading
+* payment integration
+
+---
+
+# 26. CONCLUSION
+
+This platform is a cybersecurity mentorship system, not a generic academy.
+
+Its core strength is controlled progression:
+
+Apply
+→ Get approved
+→ Receive coupon
+→ Get assigned one cybersecurity path
+→ Study through videos, slides, and quizzes
+→ Complete path
+→ Receive next assigned path
+
+The system should guide mentees step by step while giving the mentor full control over learning access, content structure, and progression.
