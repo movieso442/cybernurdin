@@ -1,17 +1,12 @@
 export type FirestoreCollectionDefinition = {
   name: string;
   purpose: string;
-  ownerFlow: 'public' | 'application' | 'mentee' | 'learning' | 'system';
+  ownerFlow: 'application' | 'mentee' | 'learning' | 'sessions' | 'system';
 };
 
-export const firestoreSchemaVersion = '2026-05-30-cybernurdin-userflow-v1';
+export const firestoreSchemaVersion = '2026-06-05-cybernurdin-path-units-bbb-v1';
 
 export const expectedFirestoreCollections: FirestoreCollectionDefinition[] = [
-  {
-    name: 'systemConfig',
-    purpose: 'Project-level settings, schema version, YouTube channel source, and content indexing rules.',
-    ownerFlow: 'system',
-  },
   {
     name: 'users',
     purpose: 'Approved mentee profiles, status, active path, coupon code, and completed path history.',
@@ -29,7 +24,12 @@ export const expectedFirestoreCollections: FirestoreCollectionDefinition[] = [
   },
   {
     name: 'mentorshipPaths',
-    purpose: 'Cybersecurity mentorship path summaries and their YouTube playlist mapping.',
+    purpose: 'Cybersecurity mentorship path summaries and ordered path unit references.',
+    ownerFlow: 'learning',
+  },
+  {
+    name: 'pathUnits',
+    purpose: 'Sub-courses inside a mentorship path, with unlock rules and module ordering.',
     ownerFlow: 'learning',
   },
   {
@@ -39,17 +39,17 @@ export const expectedFirestoreCollections: FirestoreCollectionDefinition[] = [
   },
   {
     name: 'modules',
-    purpose: 'Ordered modules belonging to a mentorship path.',
+    purpose: 'Ordered modules belonging to a path unit inside one mentorship path.',
     ownerFlow: 'learning',
   },
   {
     name: 'lessons',
-    purpose: 'Ordered lessons belonging to modules, including YouTube episode index references.',
+    purpose: 'Ordered lessons belonging to modules, including unit, YouTube video, slide, notes, and quiz references.',
     ownerFlow: 'learning',
   },
   {
     name: 'videos',
-    purpose: 'YouTube-only video records mapped to lessons and path playlists.',
+    purpose: 'YouTube video metadata and indexing status attached to lessons.',
     ownerFlow: 'learning',
   },
   {
@@ -74,17 +74,27 @@ export const expectedFirestoreCollections: FirestoreCollectionDefinition[] = [
   },
   {
     name: 'progress',
-    purpose: 'Mentee lesson progress, video completion, slides completion, quiz pass state, and current lesson.',
+    purpose: 'Mentee path, unit, module, lesson, video, slides, quiz, and current next-step progress.',
     ownerFlow: 'mentee',
   },
   {
-    name: 'bookings',
-    purpose: 'Mentor session bookings connected to a mentee and active path.',
-    ownerFlow: 'mentee',
+    name: 'sessions',
+    purpose: 'BigBlueButton mentorship sessions, office hours, join metadata, status, and schedule details.',
+    ownerFlow: 'sessions',
+  },
+  {
+    name: 'recordings',
+    purpose: 'BigBlueButton recording metadata and playback URLs surfaced inside CyberNurdin.',
+    ownerFlow: 'sessions',
   },
   {
     name: 'notifications',
     purpose: 'Application, access, learning, and session notifications for mentees.',
+    ownerFlow: 'mentee',
+  },
+  {
+    name: 'submissions',
+    purpose: 'Mentee evidence submissions per lesson: screenshots, PDFs, certificates, reflections. Includes mentor review status and feedback.',
     ownerFlow: 'mentee',
   },
 ];

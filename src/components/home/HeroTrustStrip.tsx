@@ -1,7 +1,9 @@
-import { BriefcaseBusiness, Code2, ShieldCheck, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { BriefcaseBusiness, Code2, Users } from 'lucide-react';
+import { CyberNurdinLogoMark } from '@/components/shared/CyberNurdinLogo';
 
-const trustItems = [
-  { label: 'Expert Mentors', icon: ShieldCheck },
+const trustItems: Array<{ label: string; icon?: LucideIcon; logo?: boolean }> = [
+  { label: 'Expert Mentors', logo: true },
   { label: 'Hands-on Projects', icon: Code2 },
   { label: 'Career Support', icon: BriefcaseBusiness },
   { label: 'Community Access', icon: Users },
@@ -21,7 +23,11 @@ export default function HeroTrustStrip() {
                   index > 0 ? 'border-l border-[#061C36]/10' : ''
                 } ${index === 2 ? 'max-sm:border-l-0 max-sm:border-t' : ''} ${index === 3 ? 'max-sm:border-t' : ''}`}
               >
-                <Icon size={23} className="text-[#061C36]" strokeWidth={2.1} />
+                {item.logo ? (
+                  <CyberNurdinLogoMark className="h-6 w-6" />
+                ) : Icon ? (
+                  <Icon size={23} className="text-[#061C36]" strokeWidth={2.1} />
+                ) : null}
                 <span className="text-[11px] font-extrabold text-[#061C36]">{item.label}</span>
               </div>
             );

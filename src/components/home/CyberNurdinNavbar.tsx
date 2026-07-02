@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Menu, Shield, X } from 'lucide-react';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -13,17 +14,6 @@ const navLinks = [
   { label: 'Login', href: '/login' },
 ];
 
-function LogoMark() {
-  return (
-    <span className="flex items-center gap-3">
-      <span className="grid h-8 w-8 place-items-center text-[#F95738]">
-        <Shield size={28} strokeWidth={2.4} />
-      </span>
-      <span className="text-lg font-extrabold tracking-tight text-white">CyberNurdin</span>
-    </span>
-  );
-}
-
 export default function CyberNurdinNavbar() {
   const [open, setOpen] = useState(false);
 
@@ -31,7 +21,7 @@ export default function CyberNurdinNavbar() {
     <header className="sticky top-0 z-50 bg-[#061C36] text-white shadow-[0_10px_28px_rgba(6,28,54,0.16)]">
       <div className="flex h-[66px] w-full items-center justify-between px-6 sm:px-8 lg:px-16 2xl:px-20">
         <Link href="/" aria-label="CyberNurdin home">
-          <LogoMark />
+          <CyberNurdinLogo size="sm" variant="light" />
         </Link>
 
         <nav className="hidden items-center gap-9 lg:flex">

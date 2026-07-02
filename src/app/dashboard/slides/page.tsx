@@ -1,5 +1,5 @@
-import { LibraryPageView } from '@/components/dashboard/DashboardPages';
+import { redirect } from 'next/navigation';
 
 export default function SlidesRoute() {
-  return <LibraryPageView type="slides" />;
+  redirect('/dashboard/lessons');
 }

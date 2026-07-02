@@ -1,5 +1,5 @@
-import { ProfileSettingsPageView } from '@/components/dashboard/DashboardPages';
+import { redirect } from 'next/navigation';
 
 export default function SettingsRoute() {
-  return <ProfileSettingsPageView settings />;
+  redirect('/dashboard/profile');
 }

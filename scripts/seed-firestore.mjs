@@ -62,8 +62,14 @@ function compact(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function allModules(pathRecord) {
+  return pathRecord.units.flatMap((unitRecord) => unitRecord.modules);
+}
+
 function allLessons(pathRecord) {
-  return pathRecord.modules.flatMap((moduleRecord) => moduleRecord.lessons);
+  return pathRecord.units.flatMap((unitRecord) =>
+    unitRecord.modules.flatMap((moduleRecord) => moduleRecord.lessons),
+  );
 }
 
 export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) {
@@ -121,7 +127,8 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
   }
 
   for (const pathRecord of mentorshipPaths) {
-    const { modules, ...pathBase } = pathRecord;
+    const { units, ...pathBase } = pathRecord;
+    const pathModules = allModules(pathRecord);
     const pathLessons = allLessons(pathRecord);
     const pathYoutubePlaylistUrl = pathBase.youtubePlaylistId
       ? `https://www.youtube.com/playlist?list=${pathBase.youtubePlaylistId}`
@@ -133,9 +140,11 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
       data: compact({
         ...pathBase,
         youtubePlaylistUrl: pathBase.youtubePlaylistUrl || pathYoutubePlaylistUrl,
-        moduleIds: modules.map((moduleRecord) => moduleRecord.id),
+        unitIds: units.map((unitRecord) => unitRecord.id),
+        moduleIds: pathModules.map((moduleRecord) => moduleRecord.id),
         lessonIds: pathLessons.map((lessonRecord) => lessonRecord.id),
-        moduleCount: modules.length,
+        unitCount: units.length,
+        moduleCount: pathModules.length,
         lessonCount: pathLessons.length,
         accessModel: 'assigned-path-only',
         contentStatus: 'seeded',
@@ -144,7 +153,26 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
       }),
     });
 
-    modules.forEach((moduleRecord, moduleIndex) => {
+    units.forEach((unitRecord, unitIndex) => {
+      const { modules, ...unitBase } = unitRecord;
+
+      documents.push({
+        collectionName: 'pathUnits',
+        id: unitRecord.id,
+        data: compact({
+          ...unitBase,
+          pathSlug: pathRecord.slug,
+          order: unitRecord.order || unitIndex + 1,
+          moduleIds: modules.map((moduleRecord) => moduleRecord.id),
+          moduleCount: modules.length,
+          lessonCount: modules.flatMap((moduleRecord) => moduleRecord.lessons).length,
+          accessModel: 'assigned-path-only',
+          createdAt: now,
+          updatedAt: now,
+        }),
+      });
+
+      modules.forEach((moduleRecord, moduleIndex) => {
       documents.push({
         collectionName: 'modules',
         id: moduleRecord.id,
@@ -152,8 +180,14 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
           id: moduleRecord.id,
           pathId: pathRecord.id,
           pathSlug: pathRecord.slug,
+          unitId: unitRecord.id,
+          unitSlug: unitRecord.slug,
+          unitOrder: unitRecord.order || unitIndex + 1,
           order: moduleIndex + 1,
           title: moduleRecord.title,
+          description: moduleRecord.description,
+          unlockRule: moduleRecord.unlockRule,
+          isPublished: moduleRecord.isPublished,
           summary: moduleRecord.summary,
           lessonIds: moduleRecord.lessons.map((lessonRecord) => lessonRecord.id),
           lessonCount: moduleRecord.lessons.length,
@@ -179,6 +213,9 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
             youtube: lessonYoutube,
             pathId: pathRecord.id,
             pathSlug: pathRecord.slug,
+            unitId: unitRecord.id,
+            unitSlug: unitRecord.slug,
+            unitOrder: unitRecord.order || unitIndex + 1,
             moduleId: moduleRecord.id,
             moduleOrder: moduleIndex + 1,
             lessonOrder: lessonIndex + 1,
@@ -200,6 +237,8 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
             id: lessonVideoDocId,
             pathId: pathRecord.id,
             pathSlug: pathRecord.slug,
+            unitId: unitRecord.id,
+            unitSlug: unitRecord.slug,
             moduleId: moduleRecord.id,
             lessonId: lessonRecord.id,
             provider: 'youtube',
@@ -225,6 +264,7 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
             data: compact({
               ...slideRecord,
               pathId: pathRecord.id,
+              unitId: unitRecord.id,
               moduleId: moduleRecord.id,
               lessonId: lessonRecord.id,
               order: slideIndex + 1,
@@ -240,6 +280,7 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
           data: compact({
             id: quiz.id,
             pathId: pathRecord.id,
+            unitId: unitRecord.id,
             moduleId: moduleRecord.id,
             lessonId: lessonRecord.id,
             passingScore: quiz.passingScore,
@@ -257,6 +298,7 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
             data: compact({
               ...questionRecord,
               pathId: pathRecord.id,
+              unitId: unitRecord.id,
               moduleId: moduleRecord.id,
               lessonId: lessonRecord.id,
               quizId: quiz.id,
@@ -268,6 +310,7 @@ export function buildSeedDocuments({ timestampFactory = serverTimestamp } = {}) 
           });
         });
       });
+    });
     });
   }
 

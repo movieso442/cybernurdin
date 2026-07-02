@@ -19,7 +19,7 @@ export function Button({ children, className = '', variant = 'primary', ...props
 
   return (
     <button
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-extrabold transition duration-200 hover:-translate-y-0.5 active:translate-y-0 ${variants[variant]} ${className}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-extrabold transition duration-200 hover:-translate-y-0.5 active:translate-y-0 ${variants[variant]} ${className}`}
       {...props}
     >
       {children}
@@ -34,7 +34,7 @@ type CardProps = React.HTMLAttributes<HTMLDivElement> & {
 export function Card({ children, className = '', hoverEffect = true, ...props }: CardProps) {
   return (
     <div
-      className={`rounded-2xl border border-[#061C36]/10 bg-white/85 shadow-[0_18px_48px_rgba(6,28,54,0.08)] ${hoverEffect ? 'transition duration-200 hover:-translate-y-1 hover:border-[#F95738]/32' : ''} ${className}`}
+      className={`rounded-lg border border-[#061C36]/10 bg-white/85 shadow-[0_14px_34px_rgba(6,28,54,0.07)] ${hoverEffect ? 'transition duration-200 hover:-translate-y-0.5 hover:border-[#F95738]/32' : ''} ${className}`}
       {...props}
     >
       {children}
@@ -46,19 +46,30 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
+  rightElement?: React.ReactNode;
   dark?: boolean;
 };
 
-export function Input({ label, error, icon, className = '', dark = false, ...props }: InputProps) {
+export function Input({ label, error, icon, rightElement, className = '', dark = false, style, ...props }: InputProps) {
   return (
     <label className={`block text-left ${className}`}>
       {label && <span className={`mb-1.5 block text-[11px] font-black uppercase tracking-wide ${dark ? 'text-white/60' : 'text-[#061C36]/62'}`}>{label}</span>}
       <span className="relative block">
-        {icon && <span className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${dark ? 'text-white/36' : 'text-[#061C36]/36'}`}>{icon}</span>}
+        {icon && <span className={`pointer-events-none absolute left-4 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center ${dark ? 'text-white/36' : 'text-[#061C36]/36'}`}>{icon}</span>}
         <input
-          className={`${dark ? 'cn-input cn-dark-input' : 'cn-input'} ${icon ? 'pl-10' : ''}`}
+          className={`${dark ? 'cn-input cn-dark-input' : 'cn-input'}`}
+          style={{
+            paddingLeft: icon ? '3rem' : undefined,
+            paddingRight: rightElement ? '3.25rem' : undefined,
+            ...style,
+          }}
           {...props}
         />
+        {rightElement && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+            {rightElement}
+          </span>
+        )}
       </span>
       {error && (
         <span className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-500">

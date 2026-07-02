@@ -26,11 +26,13 @@ export const channelVideoIds = [
   '9LvfSRal6J4',
 ];
 
+const seedDate = '2026-06-05T00:00:00.000Z';
+
 export type UserStatus = 'pending' | 'approved' | 'suspended';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
-export type AssignmentStatus = 'active' | 'completed' | 'paused';
+export type AssignmentStatus = 'active' | 'completed' | 'paused' | 'revoked';
 export type LessonProgressState = 'locked' | 'unlocked' | 'in-progress' | 'completed';
-
+export type UnlockRule = 'available' | 'previous-unit-complete' | 'previous-module-complete' | 'manual';
 export type YouTubeIndexingStatus = 'needs-playlist' | 'needs-video' | 'indexed';
 
 export type YouTubeLessonSource = {
@@ -48,9 +50,15 @@ export type YouTubeLessonSource = {
 
 export type Slide = {
   id: string;
+  pathId: string;
+  unitId: string;
+  moduleId: string;
+  lessonId: string;
   title: string;
   body: string;
   takeaway: string;
+  slideUrl?: string;
+  order: number;
 };
 
 export type QuizQuestion = {
@@ -62,30 +70,71 @@ export type QuizQuestion = {
 
 export type Quiz = {
   id: string;
+  pathId: string;
+  unitId: string;
+  moduleId: string;
+  lessonId?: string;
+  title: string;
   passingScore: number;
+  retakeAllowed: boolean;
+  order: number;
   questions: QuizQuestion[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Lesson = {
   id: string;
+  pathId: string;
+  unitId: string;
+  moduleId: string;
   slug: string;
   title: string;
   description: string;
-  duration: string;
   youtubeVideoId: string;
   videoUrl: string;
   youtube: YouTubeLessonSource;
+  slideUrl: string;
   notes: string[];
   resources: string[];
   slides: Slide[];
   quiz: Quiz;
+  order: number;
+  duration: string;
+  estimatedDuration: string;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Module = {
   id: string;
+  pathId: string;
+  unitId: string;
   title: string;
+  description: string;
   summary: string;
+  order: number;
+  unlockRule: UnlockRule;
+  isPublished: boolean;
   lessons: Lesson[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PathUnit = {
+  id: string;
+  pathId: string;
+  title: string;
+  slug: string;
+  description: string;
+  order: number;
+  estimatedDuration: string;
+  unlockRule: UnlockRule;
+  isPublished: boolean;
+  modules: Module[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type MentorshipPath = {
@@ -96,9 +145,12 @@ export type MentorshipPath = {
   category: string;
   level: 'Beginner' | 'Intermediate' | 'Advanced';
   duration: string;
+  estimatedDuration: string;
   mentorName: string;
   mentorTitle: string;
   iconName: string;
+  order: number;
+  isPublished: boolean;
   youtubeChannelId: string;
   youtubeChannelUrl: string;
   youtubePlaylistId: string | null;
@@ -106,7 +158,9 @@ export type MentorshipPath = {
   youtubePlaylistStatus: 'pending' | 'active';
   youtubeIndexingMode: 'manual-episode-index';
   outcomes: string[];
-  modules: Module[];
+  units: PathUnit[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ApplicationPayload = {
@@ -129,9 +183,14 @@ export type ApplicationPayload = {
   commitmentAccepted: boolean;
 };
 
-export type ApplicationRecord = ApplicationPayload & {
+export type CouponEmailStatus = 'sent' | 'not-configured' | 'failed';
+
+export type ApplicationRecord = Omit<ApplicationPayload, 'password'> & {
   id: string;
   status: ApplicationStatus;
+  couponCode?: string;
+  couponEmailStatus?: CouponEmailStatus;
+  couponEmailMessage?: string;
   createdAt: string;
 };
 
@@ -152,51 +211,126 @@ export type PathAssignment = {
   userId: string;
   pathId: string;
   status: AssignmentStatus;
+  assignedBy?: string;
   assignedAt: string;
   completedAt?: string;
+  currentUnitId?: string;
+  currentModuleId?: string;
+  currentLessonId?: string;
+  progressPercent?: number;
 };
 
 export type LessonProgress = {
   state: LessonProgressState;
+  pathId: string;
+  unitId: string;
+  moduleId: string;
+  lessonId: string;
   videoCompleted: boolean;
   slidesCompleted: boolean;
   quizPassed: boolean;
+  lessonCompleted: boolean;
+  moduleCompleted: boolean;
+  unitCompleted: boolean;
+  pathCompleted: boolean;
+  progressPercent: number;
   score?: number;
   updatedAt: string;
+};
+
+export type UnitProgress = {
+  unitId: string;
+  state: LessonProgressState;
+  progressPercent: number;
+  completed: boolean;
+};
+
+export type ModuleProgress = {
+  moduleId: string;
+  unitId: string;
+  state: LessonProgressState;
+  progressPercent: number;
+  completed: boolean;
 };
 
 export type ProgressRecord = {
   id: string;
   userId: string;
   pathId: string;
+  currentUnitId: string;
+  currentModuleId: string;
   currentLessonId: string;
   completedPathIds: string[];
   lessons: Record<string, LessonProgress>;
+  modules: Record<string, ModuleProgress>;
+  units: Record<string, UnitProgress>;
+  progressPercent: number;
+  pathCompleted: boolean;
   updatedAt: string;
 };
 
 export type Booking = {
   id: string;
   userId: string;
+  menteeId?: string;
+  mentorId?: string;
   pathId: string;
+  title?: string;
+  description?: string;
   mentorName: string;
   topic: string;
   date: string;
   time: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  scheduledAt?: string;
+  duration?: number;
+  status: 'scheduled' | 'live' | 'completed' | 'cancelled';
+  bbbMeetingId?: string;
+  attendeeJoinUrl?: string;
+  moderatorJoinUrl?: string;
+  recordingUrl?: string;
+  recordingPlaybackUrl?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type QuizAttempt = {
   id: string;
   userId: string;
   pathId: string;
+  unitId?: string;
+  moduleId?: string;
   lessonId: string;
   quizId: string;
   score: number;
   passed: boolean;
   answers: Record<string, number>;
   createdAt: string;
+};
+
+export type LessonWithContext = Lesson & {
+  path: MentorshipPath;
+  unit: PathUnit;
+  module: Module;
+};
+
+export type SubmissionStatus = 'pending' | 'under-review' | 'approved' | 'rejected';
+export type EvidenceType = 'screenshot' | 'pdf' | 'certificate' | 'lab-notes' | 'reflection';
+
+export type EvidenceSubmission = {
+  id: string;
+  userId: string;
+  pathId: string;
+  unitId: string;
+  moduleId: string;
+  lessonId: string;
+  evidenceUrl: string;
+  evidenceType: EvidenceType;
+  notes: string;
+  status: SubmissionStatus;
+  mentorFeedback?: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 };
 
 export const iconRegistry = {
@@ -215,94 +349,9 @@ export const iconRegistry = {
   search: FileSearch,
 };
 
-const quiz = (id: string, prompt: string): Quiz => ({
-  id,
-  passingScore: 70,
-  questions: [
-    {
-      id: `${id}-q1`,
-      prompt,
-      options: ['Confidentiality, integrity, availability', 'Capture, inject, automate', 'Compute, index, archive', 'Containment, isolation, attribution'],
-      correctIndex: 0,
-    },
-    {
-      id: `${id}-q2`,
-      prompt: 'Why does CyberNurdin lock mentees to one active path at a time?',
-      options: ['To keep learning guided and reviewed', 'To hide public pages', 'To remove quizzes', 'To self-unlock advanced paths'],
-      correctIndex: 0,
-    },
-    {
-      id: `${id}-q3`,
-      prompt: 'Where should lesson videos be watched in this platform?',
-      options: ['A self-hosted file server', 'YouTube embeds mapped to lesson records', 'Downloaded ZIP files', 'Offline-only storage'],
-      correctIndex: 1,
-    },
-  ],
-});
-
-const slides = (prefix: string, focus: string): Slide[] => [
-  {
-    id: `${prefix}-s1`,
-    title: 'Threat Context',
-    body: `Understand the real-world risk behind ${focus} before touching tools or dashboards.`,
-    takeaway: 'Defenders start with context, not random commands.',
-  },
-  {
-    id: `${prefix}-s2`,
-    title: 'Guided Workflow',
-    body: 'Break the work into observe, investigate, validate, document, and improve.',
-    takeaway: 'A repeatable workflow makes investigations faster and calmer.',
-  },
-  {
-    id: `${prefix}-s3`,
-    title: 'Mentor Review',
-    body: 'Capture notes, screenshots, and decisions so a mentor can review your thinking.',
-    takeaway: 'Progress is measured through evidence and clear reasoning.',
-  },
-];
-
-const lesson = (
-  id: string,
-  slug: string,
-  title: string,
-  description: string,
-  duration: string,
-  youtubeVideoId: string,
-  episodeIndex: number,
-  focus: string,
-): Lesson => ({
-  id,
-  slug,
-  title,
-  description,
-  duration,
-  youtubeVideoId,
-  videoUrl: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
-  youtube: {
-    provider: 'youtube',
-    channelId: YOUTUBE_CHANNEL_ID,
-    channelUrl: YOUTUBE_CHANNEL_URL,
-    playlistId: null,
-    playlistUrl: null,
-    episodeIndex,
-    videoId: youtubeVideoId,
-    watchUrl: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
-    embedUrl: `https://www.youtube.com/embed/${youtubeVideoId}?modestbranding=1&rel=0`,
-    indexingStatus: youtubeVideoId ? 'indexed' : 'needs-video',
-  },
-  notes: [
-    `Map ${focus} to a realistic defender workflow.`,
-    'Write down what you observed, what you verified, and what still needs mentor review.',
-    'Do not skip slides or quizzes; they are part of your completion evidence.',
-  ],
-  resources: [
-    'Mentor review checklist',
-    'Incident notes template',
-    'Lab reflection prompts',
-  ],
-  slides: slides(id, focus),
-  quiz: quiz(`${id}-quiz`, `Which principle is foundational when assessing ${focus}?`),
-});
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 
 const youtubePlaylistPlaceholder = () => ({
   youtubeChannelId: YOUTUBE_CHANNEL_ID,
@@ -313,39 +362,301 @@ const youtubePlaylistPlaceholder = () => ({
   youtubeIndexingMode: 'manual-episode-index' as const,
 });
 
+function makeSlides(pathId: string, unitId: string, moduleId: string, lessonId: string, focus: string): Slide[] {
+  return [
+    {
+      id: `${lessonId}-slide-1`,
+      pathId,
+      unitId,
+      moduleId,
+      lessonId,
+      title: 'Threat Context',
+      body: `Understand the real-world risk behind ${focus} before touching tools or dashboards.`,
+      takeaway: 'Defenders start with context, not random commands.',
+      slideUrl: `/slides/${lessonId}-intro`,
+      order: 1,
+    },
+    {
+      id: `${lessonId}-slide-2`,
+      pathId,
+      unitId,
+      moduleId,
+      lessonId,
+      title: 'Guided Workflow',
+      body: 'Break the work into observe, investigate, validate, document, and improve.',
+      takeaway: 'A repeatable workflow makes investigations faster and calmer.',
+      slideUrl: `/slides/${lessonId}-workflow`,
+      order: 2,
+    },
+    {
+      id: `${lessonId}-slide-3`,
+      pathId,
+      unitId,
+      moduleId,
+      lessonId,
+      title: 'Mentor Review',
+      body: 'Capture notes, screenshots, and decisions so a mentor can review your thinking.',
+      takeaway: 'Progress is measured through evidence and clear reasoning.',
+      slideUrl: `/slides/${lessonId}-review`,
+      order: 3,
+    },
+  ];
+}
+
+function makeQuiz(pathId: string, unitId: string, moduleId: string, lessonId: string, title: string, focus: string, order: number): Quiz {
+  return {
+    id: `${lessonId}-quiz`,
+    pathId,
+    unitId,
+    moduleId,
+    lessonId,
+    title: `${title} Checkpoint`,
+    passingScore: 70,
+    retakeAllowed: true,
+    order,
+    createdAt: seedDate,
+    updatedAt: seedDate,
+    questions: [
+      {
+        id: `${lessonId}-q1`,
+        prompt: `Which principle is foundational when assessing ${focus}?`,
+        options: ['Confidentiality, integrity, availability', 'Capture, inject, automate', 'Compute, index, archive', 'Containment, isolation, attribution'],
+        correctIndex: 0,
+      },
+      {
+        id: `${lessonId}-q2`,
+        prompt: 'Why does CyberNurdin keep one active mentorship path per mentee?',
+        options: ['To keep learning guided and reviewed', 'To hide public pages', 'To remove quizzes', 'To self-unlock advanced paths'],
+        correctIndex: 0,
+      },
+      {
+        id: `${lessonId}-q3`,
+        prompt: 'What should you capture for mentor review?',
+        options: ['Clear notes and evidence', 'Only tool names', 'Random screenshots', 'Nothing until the final path'],
+        correctIndex: 0,
+      },
+    ],
+  };
+}
+
+function makeLesson(input: {
+  pathId: string;
+  unitId: string;
+  moduleId: string;
+  title: string;
+  description: string;
+  youtubeVideoId: string;
+  order: number;
+  focus: string;
+  estimatedDuration?: string;
+}): Lesson {
+  const id = `${input.moduleId}-lesson-${input.order}`;
+  const estimatedDuration = input.estimatedDuration || '18 min';
+
+  return {
+    id,
+    pathId: input.pathId,
+    unitId: input.unitId,
+    moduleId: input.moduleId,
+    slug: slugify(input.title),
+    title: input.title,
+    description: input.description,
+    youtubeVideoId: input.youtubeVideoId,
+    videoUrl: `https://www.youtube.com/watch?v=${input.youtubeVideoId}`,
+    youtube: {
+      provider: 'youtube',
+      channelId: YOUTUBE_CHANNEL_ID,
+      channelUrl: YOUTUBE_CHANNEL_URL,
+      playlistId: null,
+      playlistUrl: null,
+      episodeIndex: input.order,
+      videoId: input.youtubeVideoId,
+      watchUrl: `https://www.youtube.com/watch?v=${input.youtubeVideoId}`,
+      embedUrl: `https://www.youtube.com/embed/${input.youtubeVideoId}?modestbranding=1&rel=0`,
+      indexingStatus: input.youtubeVideoId ? 'indexed' : 'needs-video',
+    },
+    slideUrl: `/slides/${id}`,
+    notes: [
+      `Map ${input.focus} to a realistic defender workflow.`,
+      'Write down what you observed, what you verified, and what still needs mentor review.',
+      'Complete the video, slides, and quiz before moving forward.',
+    ],
+    resources: [
+      'Mentor review checklist',
+      'Incident notes template',
+      'Lab reflection prompts',
+    ],
+    slides: makeSlides(input.pathId, input.unitId, input.moduleId, id, input.focus),
+    quiz: makeQuiz(input.pathId, input.unitId, input.moduleId, id, input.title, input.focus, input.order),
+    order: input.order,
+    duration: estimatedDuration,
+    estimatedDuration,
+    isRequired: true,
+    createdAt: seedDate,
+    updatedAt: seedDate,
+  };
+}
+
+function makeModule(input: {
+  pathId: string;
+  unitId: string;
+  unitSlug: string;
+  order: number;
+  title: string;
+  description: string;
+  lessonTitle: string;
+  lessonDescription: string;
+  focus: string;
+  youtubeVideoId: string;
+}): Module {
+  const id = `${input.unitSlug}-module-${input.order}`;
+  return {
+    id,
+    pathId: input.pathId,
+    unitId: input.unitId,
+    title: input.title,
+    description: input.description,
+    summary: input.description,
+    order: input.order,
+    unlockRule: input.order === 1 ? 'available' : 'previous-module-complete',
+    isPublished: true,
+    lessons: [
+      makeLesson({
+        pathId: input.pathId,
+        unitId: input.unitId,
+        moduleId: id,
+        title: input.lessonTitle,
+        description: input.lessonDescription,
+        youtubeVideoId: input.youtubeVideoId,
+        order: 1,
+        focus: input.focus,
+      }),
+    ],
+    createdAt: seedDate,
+    updatedAt: seedDate,
+  };
+}
+
+function makeUnit(input: {
+  pathId: string;
+  order: number;
+  title: string;
+  description: string;
+  estimatedDuration?: string;
+  modules: Array<{
+    title: string;
+    description: string;
+    lessonTitle: string;
+    lessonDescription: string;
+    focus: string;
+    youtubeVideoId: string;
+  }>;
+}): PathUnit {
+  const slug = slugify(input.title);
+  const id = `${input.pathId}-${slug}`;
+  return {
+    id,
+    pathId: input.pathId,
+    title: input.title,
+    slug,
+    description: input.description,
+    order: input.order,
+    estimatedDuration: input.estimatedDuration || '1 week',
+    unlockRule: input.order === 1 ? 'available' : 'previous-unit-complete',
+    isPublished: true,
+    modules: input.modules.map((moduleInput, index) => makeModule({
+      pathId: input.pathId,
+      unitId: id,
+      unitSlug: slug,
+      order: index + 1,
+      ...moduleInput,
+    })),
+    createdAt: seedDate,
+    updatedAt: seedDate,
+  };
+}
+
+const introUnitSeeds = [
+  ['Cybersecurity Basics', 'Core security language, CIA, risk, and how defenders think.', 'What is Cybersecurity?', 'Understand cybersecurity as the discipline of protecting people, systems, and data.', 'cybersecurity fundamentals'],
+  ['Threats and Attacks', 'Common attacks, attacker motivations, and defensive context.', 'Common Cyber Threats', 'Recognize common threats without turning learning into unsafe behavior.', 'common cyber threats'],
+  ['Network Security', 'Network fundamentals, firewalls, VPNs, and basic monitoring.', 'Understanding Firewalls', 'Learn why firewalls matter and how defenders reason about network boundaries.', 'network firewalls'],
+  ['Web Security', 'Web application basics, OWASP-style risks, and safer web practices.', 'Web Application Basics', 'Understand web security risks through calm, responsible review habits.', 'web application basics'],
+  ['Application Security', 'Secure development thinking, auth mistakes, and remediation notes.', 'Application Risk Review', 'Learn how to explain application risk and prioritize simple fixes.', 'application security risk'],
+  ['IAM / Access Control', 'Authentication, authorization, MFA, and access policies.', 'Authentication and Authorization', 'Separate identity, permissions, and access decisions in real systems.', 'identity and access control'],
+  ['Cloud Security Basics', 'IAM, storage exposure, logging, and cloud guardrails.', 'Cloud Guardrails', 'Learn cloud security basics through identity, logging, and exposure review.', 'cloud guardrails'],
+  ['Incident Response Basics', 'Preparation, investigation, containment, and communication.', 'Incident Response Workflow', 'Learn the first responder flow from signal to review.', 'incident response basics'],
+  ['Security Awareness', 'Human risk, phishing, passwords, and everyday security habits.', 'Security Awareness Foundations', 'Build practical awareness habits for safer teams and communities.', 'security awareness'],
+  ['Cybersecurity Career Preparation', 'Portfolio evidence, interview readiness, and learning discipline.', 'Building Your Cybersecurity Path', 'Turn guided learning into clear proof of work and next steps.', 'cybersecurity career preparation'],
+] as const;
+
+function buildIntroUnits(pathId: string) {
+  return introUnitSeeds.map(([title, description, lessonTitle, lessonDescription, focus], index) => makeUnit({
+    pathId,
+    order: index + 1,
+    title,
+    description,
+    modules: [
+      {
+        title: `Module 1: ${lessonTitle}`,
+        description,
+        lessonTitle,
+        lessonDescription,
+        focus,
+        youtubeVideoId: channelVideoIds[index % channelVideoIds.length],
+      },
+      {
+        title: `Module 2: Guided Practice`,
+        description: `Apply ${focus} with notes your mentor can review.`,
+        lessonTitle: `${title} Guided Practice`,
+        lessonDescription: `Practice ${focus} with a simple evidence-based workflow.`,
+        focus,
+        youtubeVideoId: channelVideoIds[(index + 1) % channelVideoIds.length],
+      },
+    ],
+  }));
+}
+
+function singleUnitPath(pathId: string, title: string, description: string, focus: string, videoIndex: number) {
+  return [
+    makeUnit({
+      pathId,
+      order: 1,
+      title,
+      description,
+      modules: [
+        {
+          title: `Module 1: ${title}`,
+          description,
+          lessonTitle: title,
+          lessonDescription: description,
+          focus,
+          youtubeVideoId: channelVideoIds[videoIndex % channelVideoIds.length],
+        },
+      ],
+    }),
+  ];
+}
+
 export const mentorshipPaths: MentorshipPath[] = [
   {
     id: 'path-intro',
     slug: 'introduction-to-cybersecurity',
     title: 'Introduction to Cybersecurity',
-    description: 'Build a practical defender foundation across threats, systems, networks, risk, and responsible learning habits.',
+    description: 'A broad beginner mentorship path made of focused cybersecurity units, from basics to career preparation.',
     category: 'Foundation',
     level: 'Beginner',
-    duration: '4 weeks',
+    duration: '10 weeks',
+    estimatedDuration: '10 weeks',
     mentorName: 'Assigned Mentor',
     mentorTitle: 'Cybersecurity Foundation Coach',
     iconName: 'shield',
+    order: 1,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
-    outcomes: ['Explain core security principles', 'Read basic network and system signals', 'Prepare for a guided SOC or network path'],
-    modules: [
-      {
-        id: 'intro-module-1',
-        title: 'Security Foundations',
-        summary: 'Core defender language, threat models, and safe learning habits.',
-        lessons: [
-          lesson('intro-lesson-1', 'what-is-cybersecurity', 'What is Cybersecurity?', 'Understand cybersecurity as the discipline of protecting people, systems, and data from real threats.', '18 min', channelVideoIds[0], 1, 'cybersecurity fundamentals'),
-          lesson('intro-lesson-2', 'security-principles', 'Security Principles and Threat Landscape', 'Learn CIA, risk, attacker motivations, and the defender mindset used across every CyberNurdin path.', '22 min', channelVideoIds[1], 2, 'security principles'),
-        ],
-      },
-      {
-        id: 'intro-module-2',
-        title: 'Defender Workflow',
-        summary: 'How to observe, document, and communicate security findings.',
-        lessons: [
-          lesson('intro-lesson-3', 'defender-notes', 'Evidence, Notes, and Mentor Review', 'Turn scattered findings into clear notes a mentor can review and improve.', '16 min', channelVideoIds[2], 3, 'defender documentation'),
-        ],
-      },
-    ],
+    outcomes: ['Explain core security principles', 'Complete guided sub-courses inside one path', 'Prepare for SOC, network, web, or cloud specialization'],
+    units: buildIntroUnits('path-intro'),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
   {
     id: 'path-soc',
@@ -355,22 +666,17 @@ export const mentorshipPaths: MentorshipPath[] = [
     category: 'Blue Team',
     level: 'Intermediate',
     duration: '8 weeks',
+    estimatedDuration: '8 weeks',
     mentorName: 'Assigned SOC Mentor',
     mentorTitle: 'Detection and Response Mentor',
     iconName: 'eye',
+    order: 2,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
     outcomes: ['Triage alerts with context', 'Interpret SIEM-style telemetry', 'Escalate incidents with clean evidence'],
-    modules: [
-      {
-        id: 'soc-module-1',
-        title: 'SOC Operations',
-        summary: 'Daily workflows used by analysts to investigate alerts.',
-        lessons: [
-          lesson('soc-lesson-1', 'alert-triage', 'Alert Triage and Signal Quality', 'Separate noise from meaningful security signals using a repeatable analyst checklist.', '24 min', channelVideoIds[3], 1, 'alert triage'),
-          lesson('soc-lesson-2', 'incident-escalation', 'Incident Escalation Notes', 'Write concise escalation notes that help senior responders move quickly.', '20 min', channelVideoIds[4], 2, 'incident escalation'),
-        ],
-      },
-    ],
+    units: singleUnitPath('path-soc', 'SOC Operations', 'Daily workflows used by analysts to investigate alerts.', 'SOC alert triage', 3),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
   {
     id: 'path-network',
@@ -380,21 +686,17 @@ export const mentorshipPaths: MentorshipPath[] = [
     category: 'Infrastructure',
     level: 'Intermediate',
     duration: '7 weeks',
+    estimatedDuration: '7 weeks',
     mentorName: 'Assigned Network Mentor',
     mentorTitle: 'Network Defense Mentor',
     iconName: 'network',
+    order: 3,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
     outcomes: ['Map common ports and services', 'Reason about segmentation', 'Review network exposure safely'],
-    modules: [
-      {
-        id: 'network-module-1',
-        title: 'Network Defense Basics',
-        summary: 'Core concepts for understanding and reducing network attack surface.',
-        lessons: [
-          lesson('network-lesson-1', 'network-exposure', 'Network Exposure and Service Review', 'Learn how defenders reason about exposed services and safe network review.', '21 min', channelVideoIds[5], 1, 'network exposure'),
-        ],
-      },
-    ],
+    units: singleUnitPath('path-network', 'Network Defense Basics', 'Core concepts for understanding and reducing network attack surface.', 'network exposure', 5),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
   {
     id: 'path-web',
@@ -404,21 +706,17 @@ export const mentorshipPaths: MentorshipPath[] = [
     category: 'Application Security',
     level: 'Intermediate',
     duration: '6 weeks',
+    estimatedDuration: '6 weeks',
     mentorName: 'Assigned AppSec Mentor',
     mentorTitle: 'Web Security Mentor',
     iconName: 'code',
+    order: 4,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
     outcomes: ['Identify common web risks', 'Review authentication flows', 'Write practical remediation notes'],
-    modules: [
-      {
-        id: 'web-module-1',
-        title: 'Application Risk Review',
-        summary: 'How defenders identify, explain, and prioritize web risks.',
-        lessons: [
-          lesson('web-lesson-1', 'web-risk', 'Web Risk and Responsible Testing', 'Understand how to evaluate web risks without turning learning into unsafe behavior.', '19 min', channelVideoIds[0], 1, 'web application risk'),
-        ],
-      },
-    ],
+    units: singleUnitPath('path-web', 'Application Risk Review', 'How defenders identify, explain, and prioritize web risks.', 'web application risk', 0),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
   {
     id: 'path-cloud',
@@ -428,21 +726,17 @@ export const mentorshipPaths: MentorshipPath[] = [
     category: 'Cloud Defense',
     level: 'Intermediate',
     duration: '6 weeks',
+    estimatedDuration: '6 weeks',
     mentorName: 'Assigned Cloud Mentor',
     mentorTitle: 'Cloud Security Mentor',
     iconName: 'cloud',
+    order: 5,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
     outcomes: ['Explain IAM least privilege', 'Review common cloud exposure', 'Create cloud hardening notes'],
-    modules: [
-      {
-        id: 'cloud-module-1',
-        title: 'Cloud Guardrails',
-        summary: 'IAM, logging, and configuration basics for practical cloud defense.',
-        lessons: [
-          lesson('cloud-lesson-1', 'cloud-guardrails', 'Cloud IAM and Guardrails', 'Learn how cloud defenders reason about identity, access, and evidence.', '23 min', channelVideoIds[1], 1, 'cloud guardrails'),
-        ],
-      },
-    ],
+    units: singleUnitPath('path-cloud', 'Cloud Guardrails', 'IAM, logging, and configuration basics for practical cloud defense.', 'cloud guardrails', 1),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
   {
     id: 'path-ir',
@@ -452,21 +746,17 @@ export const mentorshipPaths: MentorshipPath[] = [
     category: 'Response',
     level: 'Advanced',
     duration: '6 weeks',
+    estimatedDuration: '6 weeks',
     mentorName: 'Assigned IR Mentor',
     mentorTitle: 'Incident Response Mentor',
     iconName: 'siren',
+    order: 6,
+    isPublished: true,
     ...youtubePlaylistPlaceholder(),
     outcomes: ['Draft incident timelines', 'Choose containment actions', 'Communicate risk clearly'],
-    modules: [
-      {
-        id: 'ir-module-1',
-        title: 'Response Workflow',
-        summary: 'Practical incident response from first signal to containment notes.',
-        lessons: [
-          lesson('ir-lesson-1', 'response-workflow', 'Incident Response Workflow', 'Learn the sequence of preparation, identification, containment, eradication, recovery, and review.', '25 min', channelVideoIds[2], 1, 'incident response workflow'),
-        ],
-      },
-    ],
+    units: singleUnitPath('path-ir', 'Response Workflow', 'Practical incident response from first signal to containment notes.', 'incident response workflow', 2),
+    createdAt: seedDate,
+    updatedAt: seedDate,
   },
 ];
 
@@ -506,8 +796,25 @@ export const defaultCoupons = [
   { code: 'NETWORK-APPROVED-2026', pathId: 'path-network', status: 'active' },
 ];
 
-export function getAllLessons(path: MentorshipPath) {
-  return path.modules.flatMap((module) => module.lessons.map((lessonItem) => ({ ...lessonItem, module })));
+export function getAllUnits(path: MentorshipPath) {
+  return path.units;
+}
+
+export function getAllModules(path: MentorshipPath) {
+  return path.units.flatMap((unit) => unit.modules.map((moduleItem) => ({ ...moduleItem, unit })));
+}
+
+export function getAllLessons(path: MentorshipPath): LessonWithContext[] {
+  return path.units.flatMap((unit) =>
+    unit.modules.flatMap((moduleItem) =>
+      moduleItem.lessons.map((lessonItem) => ({
+        ...lessonItem,
+        path,
+        unit,
+        module: moduleItem,
+      })),
+    ),
+  );
 }
 
 export function getPathBySlug(slug: string) {
@@ -523,16 +830,50 @@ export function getLesson(pathSlug: string, lessonId: string) {
   if (!path) return null;
   const lessons = getAllLessons(path);
   const lessonItem = lessons.find((item) => item.id === lessonId || item.slug === lessonId);
-  return lessonItem ? { path, lesson: lessonItem, lessons } : null;
+  return lessonItem ? { path, unit: lessonItem.unit, module: lessonItem.module, lesson: lessonItem, lessons } : null;
 }
 
 export function getInitialLessonId(path: MentorshipPath) {
   return getAllLessons(path)[0]?.id ?? '';
 }
 
+export function getLessonContext(path: MentorshipPath, lessonId: string) {
+  return getAllLessons(path).find((lessonItem) => lessonItem.id === lessonId || lessonItem.slug === lessonId) || null;
+}
+
+export function calculateUnitProgress(unit: PathUnit, progress?: ProgressRecord | null) {
+  const lessons = unit.modules.flatMap((moduleItem) => moduleItem.lessons);
+  if (!lessons.length) return 0;
+  const completed = lessons.filter(({ id }) => progress?.lessons?.[id]?.lessonCompleted || progress?.lessons?.[id]?.state === 'completed').length;
+  return Math.round((completed / lessons.length) * 100);
+}
+
+export function calculateModuleProgress(moduleItem: Module, progress?: ProgressRecord | null) {
+  if (!moduleItem.lessons.length) return 0;
+  const completed = moduleItem.lessons.filter(({ id }) => progress?.lessons?.[id]?.lessonCompleted || progress?.lessons?.[id]?.state === 'completed').length;
+  return Math.round((completed / moduleItem.lessons.length) * 100);
+}
+
 export function calculatePathProgress(path: MentorshipPath, progress?: ProgressRecord | null) {
   const lessons = getAllLessons(path);
   if (!lessons.length) return 0;
-  const completed = lessons.filter(({ id }) => progress?.lessons?.[id]?.state === 'completed').length;
+  const completed = lessons.filter(({ id }) => progress?.lessons?.[id]?.lessonCompleted || progress?.lessons?.[id]?.state === 'completed').length;
   return Math.round((completed / lessons.length) * 100);
+}
+
+export function getCurrentLesson(path: MentorshipPath, progress?: ProgressRecord | null) {
+  const lessons = getAllLessons(path);
+  return lessons.find((item) => item.id === progress?.currentLessonId) ||
+    lessons.find((item) => !(progress?.lessons?.[item.id]?.lessonCompleted || progress?.lessons?.[item.id]?.state === 'completed')) ||
+    lessons[0];
+}
+
+export function getUnitState(path: MentorshipPath, unit: PathUnit, progress?: ProgressRecord | null): LessonProgressState {
+  const unitProgress = calculateUnitProgress(unit, progress);
+  if (unitProgress === 100) return 'completed';
+  const currentLesson = getCurrentLesson(path, progress);
+  if (currentLesson?.unitId === unit.id || unit.order === 1) return unitProgress > 0 ? 'in-progress' : 'unlocked';
+  const previousUnit = path.units.find((item) => item.order === unit.order - 1);
+  if (previousUnit && calculateUnitProgress(previousUnit, progress) === 100) return 'unlocked';
+  return 'locked';
 }

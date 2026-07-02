@@ -17,14 +17,18 @@ export default function HomePage() {
         <HomeHeroSection />
         <HeroTrustStrip />
       </section>
-      <section className="flex w-full items-center bg-[#FFF8EF] py-14 md:min-h-screen md:py-16">
+      <section className="w-full bg-[#FFF8EF] px-6 py-8 sm:px-8 lg:px-16 lg:py-10 2xl:px-20">
         <MentorshipStatsPanel />
+        <MentorshipProcessSection />
       </section>
-      <MentorshipProcessSection />
       <FeaturedMentorshipPathsSection />
       <WhyCyberNurdinSection />
-      <TestimonialsSection />
-      <FinalCTASection />
+      <section className="w-full bg-[#FFF8EF] px-6 py-16 sm:px-8 md:py-20 lg:px-16 2xl:px-20">
+        <TestimonialsSection />
+        <div className="mt-12">
+          <FinalCTASection />
+        </div>
+      </section>
       <CyberNurdinFooter />
     </main>
   );

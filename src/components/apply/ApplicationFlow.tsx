@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Globe, Lock, Mail, Phone, Send, Shield, User } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, Globe, Lock, LogIn, Mail, Phone, Send, User } from 'lucide-react';
 import { Button, Card, Input, Stepper } from '@/components/UI';
 import { ApplicationPayload, mentorshipPaths } from '@/lib/cybernurdin-data';
+import { ApplicationSubmissionResult, getLatestRegistrationResult } from '@/lib/cybernurdin-service';
 import { useApp } from '@/context/AppContext';
 import { BrandLockup } from '@/components/public/PublicChrome';
+import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
 
 const emptyApplication: ApplicationPayload = {
   firstName: '',
@@ -38,17 +40,17 @@ function ApplySidePanel() {
         <h1 className="mt-4 text-4xl font-black leading-tight">You are one step closer to becoming <span className="text-[#F95738]">a defender.</span></h1>
         <div className="mt-8 flex justify-center">
           <div className="grid h-28 w-28 place-items-center rounded-3xl border border-[#F95738]/25 bg-[#F95738]/12 text-[#F95738]">
-            <Shield size={62} />
+            <CyberNurdinLogo size="xl" variant="light" showText={false} />
           </div>
         </div>
         <div className="mt-8 grid grid-cols-3 gap-3 text-center text-xs font-black text-white/58">
           <div>Apply</div>
-          <div>Get reviewed</div>
-          <div>Receive coupon</div>
+          <div>Create account</div>
+          <div>Start learning</div>
         </div>
       </div>
       <p className="text-xs font-semibold leading-6 text-white/56">
-        Coupon-based dashboard access is issued only after approval. You will study one assigned cybersecurity path at a time.
+        Your coupon code is emailed after registration when email delivery is configured.
       </p>
     </aside>
   );
@@ -66,9 +68,13 @@ function StepHeader({ title, body }: { title: string; body: string }) {
 function PersonalInfoStep({
   data,
   update,
+  confirmPassword,
+  updateConfirmPassword,
 }: {
   data: ApplicationPayload;
   update: (patch: Partial<ApplicationPayload>) => void;
+  confirmPassword: string;
+  updateConfirmPassword: (value: string) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -88,7 +94,7 @@ function PersonalInfoStep({
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Input label="Password" type="password" value={data.password} onChange={(event) => update({ password: event.target.value })} icon={<Lock size={15} />} required />
-          <Input label="Confirm password" type="password" icon={<Lock size={15} />} required />
+          <Input label="Confirm password" type="password" value={confirmPassword} onChange={(event) => updateConfirmPassword(event.target.value)} icon={<Lock size={15} />} required />
         </div>
       </Card>
     </div>
@@ -198,7 +204,7 @@ function ReviewStep({ data }: { data: ApplicationPayload }) {
   );
 }
 
-function SuccessPanel() {
+function SuccessPanel({ result }: { result: ApplicationSubmissionResult | null }) {
   return (
     <div className="mx-auto grid max-w-xl place-items-center py-16 text-center">
       <Card hoverEffect={false} className="p-8">
@@ -207,8 +213,19 @@ function SuccessPanel() {
         </div>
         <h1 className="mt-5 text-2xl font-black">Application Submitted</h1>
         <p className="mt-3 text-sm font-semibold leading-6 text-[#061C36]/64">
-          Your application is under review. If approved, your coupon code will be sent externally and will be required to log in.
+          Your learner account is ready. Sign in with your email or username, password, and coupon code.
         </p>
+        {result && (
+          <div className="mt-5 rounded-lg border border-dashed border-[#F95738]/42 bg-[#F95738]/6 p-4 text-left">
+            <p className="text-[11px] font-black uppercase tracking-wide text-[#F95738]">Coupon code</p>
+            <p className="mt-2 break-all text-2xl font-black tracking-wide text-[#061C36]">{result.couponCode}</p>
+            <p className="mt-2 text-xs font-bold leading-5 text-[#061C36]/58">
+              {result.emailSent
+                ? `We queued this code for Firebase email delivery to ${result.email}.`
+                : `${result.emailMessage} Use this on-screen code for local testing.`}
+            </p>
+          </div>
+        )}
         <Link href="/login" className="mt-6 block">
           <Button>Go to Login</Button>
         </Link>
@@ -222,24 +239,37 @@ export function ApplicationFlow({ initialStep = 0, successOnly = false }: { init
   const { applyForMentorship, triggerToast } = useApp();
   const [step, setStep] = useState(initialStep);
   const [data, setData] = useState<ApplicationPayload>(emptyApplication);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitted, setSubmitted] = useState(successOnly);
+  const [registrationResult, setRegistrationResult] = useState<ApplicationSubmissionResult | null>(() => getLatestRegistrationResult());
   const steps = ['Personal', 'Background', 'Commitment', 'Review'];
+
+  useEffect(() => {
+    if (submitted && !registrationResult) {
+      setRegistrationResult(getLatestRegistrationResult());
+    }
+  }, [registrationResult, submitted]);
 
   const update = (patch: Partial<ApplicationPayload>) => setData((current) => ({ ...current, ...patch }));
 
   const stepView = useMemo(() => {
-    if (step === 0) return <PersonalInfoStep data={data} update={update} />;
+    if (step === 0) return <PersonalInfoStep data={data} update={update} confirmPassword={confirmPassword} updateConfirmPassword={setConfirmPassword} />;
     if (step === 1) return <BackgroundStep data={data} update={update} />;
     if (step === 2) return <MotivationStep data={data} update={update} />;
     return <ReviewStep data={data} />;
-  }, [data, step]);
+  }, [confirmPassword, data, step]);
 
   const submit = async () => {
+    if (data.password !== confirmPassword) {
+      triggerToast('Passwords do not match.', 'danger');
+      return;
+    }
     if (!data.commitmentAccepted) {
       triggerToast('Please accept the commitment checkbox before submitting.', 'danger');
       return;
     }
-    await applyForMentorship(data);
+    const result = await applyForMentorship(data);
+    setRegistrationResult(result);
     setSubmitted(true);
     router.replace('/apply/success');
   };
@@ -249,21 +279,34 @@ export function ApplicationFlow({ initialStep = 0, successOnly = false }: { init
       <ApplySidePanel />
       <section className="flex-1 p-5 md:p-8 lg:p-10">
         {submitted ? (
-          <SuccessPanel />
+          <SuccessPanel result={registrationResult} />
         ) : (
           <div className="mx-auto max-w-3xl">
-            <div className="mb-8 flex items-center justify-between gap-4">
+            <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Link href="/" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#061C36]/54">
                 <ArrowLeft size={14} />
                 Home
               </Link>
-              <span className="text-xs font-black uppercase tracking-wide text-[#F95738]">Step {step + 1} of 4</span>
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                <Link
+                  href="/login"
+                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#061C36]/10 bg-white px-3 text-xs font-black uppercase tracking-wide text-[#061C36]/68 shadow-[0_10px_22px_rgba(6,28,54,0.05)] transition hover:border-[#F95738]/35 hover:text-[#F95738]"
+                >
+                  <LogIn size={14} />
+                  Log in
+                </Link>
+                <span className="text-xs font-black uppercase tracking-wide text-[#F95738]">Step {step + 1} of 4</span>
+              </div>
             </div>
             <Stepper steps={steps} activeStep={step} />
             <form
               className="mt-8"
               onSubmit={(event) => {
                 event.preventDefault();
+                if (step === 0 && data.password !== confirmPassword) {
+                  triggerToast('Passwords do not match.', 'danger');
+                  return;
+                }
                 if (step < 3) setStep((value) => value + 1);
                 else submit();
               }}

@@ -7,32 +7,26 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
-  FileText,
-  FolderOpen,
   LayoutDashboard,
   LogOut,
   Menu,
-  PlaySquare,
   Route,
-  Settings,
-  Shield,
+  Upload,
   User,
   X,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { BrandLockup } from '@/components/public/PublicChrome';
+import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
 
 const dashboardNav = [
   { href: '/dashboard/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/my-path', label: 'My Path', icon: Route },
-  { href: '/dashboard/progress', label: 'Progress', icon: BarChart3 },
-  { href: '/dashboard/videos', label: 'Videos', icon: PlaySquare },
-  { href: '/dashboard/slides', label: 'Slides', icon: FileText },
-  { href: '/dashboard/quizzes', label: 'Quizzes', icon: BookOpen },
+  { href: '/dashboard/lessons', label: 'Lessons', icon: BookOpen },
+  { href: '/dashboard/submissions', label: 'Submissions', icon: Upload },
   { href: '/dashboard/sessions', label: 'Sessions', icon: Calendar },
-  { href: '/dashboard/resources', label: 'Resources', icon: FolderOpen },
+  { href: '/dashboard/progress', label: 'Progress', icon: BarChart3 },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 function Sidebar({ close }: { close?: () => void }) {
@@ -66,7 +60,7 @@ function Sidebar({ close }: { close?: () => void }) {
                 key={item.href}
                 href={item.href}
                 onClick={close}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition ${
                   active ? 'bg-[#F95738]/14 text-[#F95738]' : 'text-white/62 hover:bg-white/6 hover:text-white'
                 }`}
               >
@@ -84,7 +78,7 @@ function Sidebar({ close }: { close?: () => void }) {
             logout();
             router.push('/login');
           }}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/62 hover:bg-white/6 hover:text-white"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-white/62 hover:bg-white/6 hover:text-white"
         >
           <LogOut size={17} />
           Log out
@@ -95,6 +89,7 @@ function Sidebar({ close }: { close?: () => void }) {
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const router = useRouter();
   const { user, isLoadingUser } = useApp();
   const [open, setOpen] = useState(false);
@@ -107,7 +102,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#061C36] text-white">
         <div className="text-center">
-          <Shield className="mx-auto mb-3 text-[#F95738]" size={42} />
+          <CyberNurdinLogo className="mx-auto mb-3" size="lg" variant="light" showText={false} />
           <p className="text-xs font-black uppercase tracking-[0.2em] text-white/54">Checking secure access</p>
         </div>
       </div>
@@ -121,7 +116,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#061C36]/8 bg-[#F6F2E9]/92 px-4 backdrop-blur lg:hidden">
         <BrandLockup dark={false} />
-        <button className="grid h-10 w-10 place-items-center rounded-xl border border-[#061C36]/10 bg-white" onClick={() => setOpen(true)}>
+        <button className="grid h-10 w-10 place-items-center rounded-lg border border-[#061C36]/10 bg-white" onClick={() => setOpen(true)}>
           <Menu size={20} />
         </button>
       </header>
@@ -130,7 +125,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <button aria-label="Close navigation" className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <div className="relative h-full w-72">
             <Sidebar close={() => setOpen(false)} />
-            <button className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white" onClick={() => setOpen(false)}>
+            <button className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-white" onClick={() => setOpen(false)}>
               <X size={18} />
             </button>
           </div>
@@ -139,11 +134,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <main className="min-w-0 flex-1 pb-20 lg:pb-0">
         <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">{children}</div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#061C36]/10 bg-white/94 p-2 backdrop-blur lg:hidden">
-        {dashboardNav.slice(0, 5).map((item) => {
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-[#061C36]/10 bg-white/94 p-2 backdrop-blur lg:hidden">
+        {dashboardNav.map((item) => {
           const Icon = item.icon;
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
-            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-black text-[#061C36]/56">
+            <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-black ${active ? 'text-[#F95738]' : 'text-[#061C36]/56'}`}>
               <Icon size={17} />
               {item.label}
             </Link>

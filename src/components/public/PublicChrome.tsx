@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowRight, Menu, Shield, X } from 'lucide-react';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/UI';
+import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
+import CyberNurdinFooter from '@/components/home/CyberNurdinFooter';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -17,13 +19,8 @@ const navLinks = [
 
 export function BrandLockup({ dark = true }: { dark?: boolean }) {
   return (
-    <Link href="/" className="flex items-center gap-2">
-      <span className="grid h-9 w-9 place-items-center rounded-xl border border-[#F95738]/24 bg-[#F95738]/12 text-[#F95738]">
-        <Shield size={20} />
-      </span>
-      <span className={`text-sm font-black tracking-tight ${dark ? 'text-white' : 'text-[#061C36]'}`}>
-        CyberNurdin
-      </span>
+    <Link href="/" aria-label="CyberNurdin home">
+      <CyberNurdinLogo size="sm" variant={dark ? 'light' : 'dark'} />
     </Link>
   );
 }
@@ -90,29 +87,7 @@ export function CyberNurdinNavbar() {
 }
 
 export function Footer() {
-  return (
-    <footer className="bg-[#061C36] py-12 text-white">
-      <div className="cn-container flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-        <div className="max-w-md">
-          <BrandLockup />
-          <p className="mt-3 text-sm leading-6 text-white/62">
-            Cybersecurity-only mentorship with application review, coupon-based access, guided paths, YouTube lessons, slides, quizzes, and mentor support.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm font-bold text-white/64 sm:grid-cols-3">
-          <Link href="/courses">Paths</Link>
-          <Link href="/plans">Plans</Link>
-          <Link href="/apply">Apply</Link>
-          <Link href="/login">Login</Link>
-          <Link href="/about">About</Link>
-          <Link href="/contact">Contact</Link>
-        </div>
-      </div>
-      <div className="cn-container mt-8 border-t border-white/8 pt-5 text-xs font-bold text-white/42">
-        2026 CyberNurdin. Built for future defenders.
-      </div>
-    </footer>
-  );
+  return <CyberNurdinFooter />;
 }
 
 export function PublicShell({ children, className = '' }: { children: React.ReactNode; className?: string }) {

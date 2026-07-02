@@ -1,23 +1,30 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   ArrowRight,
-  Calendar,
+  BookOpenCheck,
+  BriefcaseBusiness,
   Check,
+  CheckCircle2,
   Clock,
+  ExternalLink,
+  GraduationCap,
   Mail,
   MessageSquare,
   Phone,
   Search,
-  Shield,
+  ShieldCheck,
   Target,
   User,
+  Users,
 } from 'lucide-react';
 import { Badge, Button, Card, Input } from '@/components/UI';
+import CyberNurdinHeroIllustration from '@/components/shared/CyberNurdinHeroIllustration';
+import { CyberNurdinLogoMark } from '@/components/shared/CyberNurdinLogo';
 import { YOUTUBE_CHANNEL_URL, iconRegistry, mentorshipPaths, mentorshipPlans } from '@/lib/cybernurdin-data';
-import { HeroVisualPanel } from './HomeSections';
 import { useApp } from '@/context/AppContext';
 
 export function PageHero({
@@ -45,7 +52,7 @@ export function PageHero({
         <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-[#061C36]/68">{description}</p>
       </div>
       <div className="hidden md:block">
-        <HeroVisualPanel />
+        <CyberNurdinHeroIllustration />
       </div>
     </section>
   );
@@ -67,7 +74,7 @@ export function PlansPageView() {
               <div>
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-black">{plan.name}</h2>
-                  <Shield className="text-[#F95738]" size={24} />
+                  <CyberNurdinLogoMark className="h-8 w-8" />
                 </div>
                 <p className="mt-3 text-sm font-semibold leading-6 text-[#061C36]/62">{plan.audience}</p>
                 <div className="mt-6 rounded-2xl bg-[#FAF7F0] p-4">
@@ -159,13 +166,14 @@ export function CoursesPageView() {
       <section className="cn-container pb-20">
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((path) => {
-            const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry] || Shield;
+            const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry];
+            const useLogo = path.iconName === 'shield';
             return (
               <Card key={path.id} className="flex min-h-[360px] flex-col justify-between p-6">
                 <div>
                   <div className="flex items-start justify-between gap-4">
                     <span className="grid h-12 w-12 place-items-center rounded-2xl border border-[#F95738]/16 bg-[#F95738]/10 text-[#F95738]">
-                      <Icon size={24} />
+                      {useLogo ? <CyberNurdinLogoMark className="h-8 w-8" /> : <Icon size={24} />}
                     </span>
                     <Badge>{path.level}</Badge>
                   </div>
@@ -198,7 +206,8 @@ export function CoursesPageView() {
 
 export function PathPreviewPageView({ slug }: { slug: string }) {
   const path = mentorshipPaths.find((item) => item.slug === slug) || mentorshipPaths[0];
-  const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry] || Shield;
+  const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry];
+  const useLogo = path.iconName === 'shield';
 
   return (
     <main className="cn-grid-bg">
@@ -214,7 +223,7 @@ export function PathPreviewPageView({ slug }: { slug: string }) {
             </div>
           </div>
           <Card className="p-6">
-            <Icon size={38} className="text-[#F95738]" />
+            {useLogo ? <CyberNurdinLogoMark className="h-12 w-12" /> : <Icon size={38} className="text-[#F95738]" />}
             <div className="mt-5 grid gap-3 text-sm font-bold text-[#061C36]/68">
               <div className="rounded-xl bg-[#FAF7F0] p-4">Duration: {path.duration}</div>
               <div className="rounded-xl bg-[#FAF7F0] p-4">Mentor: {path.mentorName}</div>
@@ -226,14 +235,15 @@ export function PathPreviewPageView({ slug }: { slug: string }) {
       <section className="cn-container pb-20">
         <div className="grid gap-5 lg:grid-cols-[1fr_0.6fr]">
           <Card className="p-6">
-            <h2 className="text-xl font-black">Modules preview</h2>
+            <h2 className="text-xl font-black">Path units preview</h2>
             <div className="mt-5 space-y-4">
-              {path.modules.map((module) => (
-                <div key={module.id} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-4">
-                  <h3 className="font-black">{module.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-[#061C36]/60">{module.summary}</p>
+              {path.units.map((unit) => (
+                <div key={unit.id} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-4">
+                  <h3 className="font-black">{unit.title}</h3>
+                  <p className="mt-1 text-sm font-semibold text-[#061C36]/60">{unit.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {module.lessons.map((lesson) => <Badge key={lesson.id}>{lesson.duration}</Badge>)}
+                    <Badge>{unit.modules.length} modules</Badge>
+                    <Badge>{unit.estimatedDuration}</Badge>
                   </div>
                 </div>
               ))}
@@ -252,42 +262,226 @@ export function PathPreviewPageView({ slug }: { slug: string }) {
 }
 
 export function AboutPageView() {
-  const values = ['Integrity', 'Practical skill', 'Mentor accountability', 'Community', 'Real-world impact'];
+  const missionVision = [
+    {
+      label: 'Mission',
+      title: 'Turn scattered cybersecurity learning into guided skill growth.',
+      body: 'CyberNurdin helps serious learners build practical cybersecurity ability through focused mentorship, structured paths, reviewed work, and clear accountability.',
+      points: ['Focused cybersecurity paths', 'Mentor-reviewed practice', 'Accountability from application to progress'],
+    },
+    {
+      label: 'Vision',
+      title: 'Shape confident defenders who can think, build, and respond.',
+      body: 'We are building a mentorship platform where learners move beyond random tutorials into real security thinking, professional habits, and career-ready proof of work.',
+      points: ['Confident technical reasoning', 'Portfolio-ready learning evidence', 'A stronger pipeline of future defenders'],
+    },
+  ];
+
+  const whyItems = [
+    {
+      title: 'Structured Learning Paths',
+      body: 'Every learner follows a focused cybersecurity path, so progress is intentional instead of scattered.',
+      icon: BookOpenCheck,
+    },
+    {
+      title: 'Mentor Accountability',
+      body: 'Work is guided, reviewed, and improved with feedback from a mentor who keeps the journey practical.',
+      icon: ShieldCheck,
+    },
+    {
+      title: 'Hands-on Practice',
+      body: 'Lessons, quizzes, projects, and review checkpoints help learners turn concepts into usable skill.',
+      icon: GraduationCap,
+    },
+    {
+      title: 'Career Direction',
+      body: 'CyberNurdin helps learners connect skills to portfolios, interview confidence, and next-step readiness.',
+      icon: BriefcaseBusiness,
+    },
+    {
+      title: 'Selective Community',
+      body: 'Application-based access keeps the learning environment serious, focused, and growth-minded.',
+      icon: Users,
+    },
+    {
+      title: 'Dashboard Progress',
+      body: 'Learners can track lessons, sessions, slides, quizzes, and active path progress from one place.',
+      icon: Target,
+    },
+  ];
+
+  const founderHighlights = [
+    'Co-Founder of Bauhaven',
+    'Backend developer and mentor',
+    'Tutor, public speaker, and community advocate',
+    'Focused on practical cybersecurity education',
+  ];
+
   return (
-    <main className="cn-grid-bg">
+    <main className="cn-grid-bg overflow-hidden">
       <PageHero
         eyebrow="Our story, mission, and commitment"
-        title="Built by Defenders."
-        accent="For Future Defenders."
-        description="CyberNurdin exists to move serious learners from scattered cybersecurity content into guided, reviewed, practical growth."
+        title="CyberNurdin is built to turn serious learners into"
+        accent="real defenders."
+        description="CyberNurdin is a cybersecurity mentorship platform for learners who want structure, practical work, mentor review, and a clear path toward career-ready confidence."
       />
-      <section className="cn-container grid gap-6 pb-20 lg:grid-cols-[1fr_0.72fr]">
-        <div className="grid gap-6 md:grid-cols-2">
-          {[
-            ['Mission', 'Empower aspiring cybersecurity professionals with focused mentorship, practical learning, and reviewed proof of work.'],
-            ['Vision', 'Shape confident defenders who can reason clearly, communicate risk, and keep improving.'],
-            ['Why CyberNurdin Exists', 'Too many learners jump between tools without a mentor. This platform gives them a guided path and feedback loop.'],
-            ['Mentorship Philosophy', 'Learn, build, review, and defend. The mentor relationship keeps the work grounded and accountable.'],
-          ].map(([title, copy]) => (
-            <Card key={title} className="p-6">
-              <h2 className="text-lg font-black">{title}</h2>
-              <p className="mt-3 text-sm font-semibold leading-6 text-[#061C36]/64">{copy}</p>
-            </Card>
+
+      <section className="cn-container pb-16 md:pb-20">
+        <div className="mb-8 max-w-2xl">
+          <span className="text-[11px] font-black uppercase tracking-wide text-[#F95738]">Mission & Vision</span>
+          <h2 className="mt-2 text-3xl font-black tracking-tight text-[#061C36] md:text-4xl">
+            Built for learners who need a real roadmap, not just more content.
+          </h2>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {missionVision.map((item) => (
+            <article key={item.label} className="rounded-lg border border-[#061C36]/10 bg-white p-6 shadow-[0_16px_34px_rgba(6,28,54,0.055)] md:p-8">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-[#F95738]/10 text-[#F95738]">
+                  <CheckCircle2 size={22} />
+                </span>
+                <span className="text-xs font-black uppercase tracking-[0.18em] text-[#F95738]">{item.label}</span>
+              </div>
+              <h3 className="mt-5 text-2xl font-black leading-tight text-[#061C36]">{item.title}</h3>
+              <p className="mt-4 text-sm font-semibold leading-7 text-[#061C36]/66">{item.body}</p>
+              <ul className="mt-6 grid gap-3">
+                {item.points.map((point) => (
+                  <li key={point} className="flex items-start gap-3 text-sm font-bold text-[#061C36]/74">
+                    <Check size={16} className="mt-0.5 shrink-0 text-[#F95738]" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </article>
           ))}
         </div>
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[#F95738]/10 text-xl font-black text-[#F95738]">CN</div>
-            <div>
-              <h2 className="text-xl font-black">Founder / Mentor Section</h2>
-              <p className="text-sm font-semibold text-[#061C36]/60">Cybersecurity mentorship leadership</p>
+      </section>
+
+      <section className="bg-[#061C36] py-16 text-white md:py-20">
+        <div className="cn-container">
+          <div className="mx-auto max-w-4xl text-center">
+            <span className="text-[11px] font-black uppercase tracking-wide text-[#F95738]">Why CyberNurdin</span>
+            <h2 className="mt-2 text-3xl font-black md:text-4xl">
+              CyberNurdin is designed to keep learners moving.
+            </h2>
+            <p className="mx-auto mt-4 max-w-3xl text-sm font-semibold leading-7 text-white/68 md:text-base">
+              Many learners start cybersecurity with energy but lose direction between tools, videos, and disconnected advice. CyberNurdin gives them one guided path, practical assignments, mentor feedback, and a dashboard that makes progress visible.
+            </p>
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/courses">
+                <Button className="w-full sm:w-auto">
+                  Explore Courses
+                  <ArrowRight size={15} />
+                </Button>
+              </Link>
+              <Link href="/apply">
+                <Button variant="secondary" className="w-full border-white/20 bg-white/8 text-white hover:bg-white hover:text-[#061C36] sm:w-auto">
+                  Apply for Mentorship
+                </Button>
+              </Link>
             </div>
           </div>
-          <p className="mt-5 text-sm font-semibold leading-6 text-[#061C36]/64">Founder and mentor details can be updated with verified biography and profile assets. This section is intentionally honest and avoids invented credentials.</p>
-          <div className="mt-6 grid gap-3">
-            {values.map((value) => <div key={value} className="rounded-xl bg-[#FAF7F0] p-4 text-sm font-black">{value}</div>)}
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {whyItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article key={item.title} className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/[0.065] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.16)] transition duration-200 hover:-translate-y-1 hover:border-[#F95738]/45 hover:bg-white/[0.09]">
+                  <span className="absolute inset-x-0 top-0 h-1 bg-[#F95738] opacity-80" />
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-[#F95738]/12 text-[#F95738] transition duration-200 group-hover:bg-[#F95738] group-hover:text-white">
+                    <Icon size={21} />
+                  </span>
+                  <h3 className="mt-5 text-base font-black">{item.title}</h3>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-white/64">{item.body}</p>
+                </article>
+              );
+            })}
           </div>
-        </Card>
+        </div>
+      </section>
+
+      <section className="cn-container py-16 md:py-20">
+        <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+          <div className="relative min-h-[520px] overflow-hidden rounded-lg border border-[#061C36]/10 bg-[#061C36] px-5 pt-7 shadow-[0_24px_52px_rgba(6,28,54,0.18)] md:min-h-[600px] md:px-8">
+            <div className="absolute inset-0 cn-dark-grid-bg opacity-55" />
+            <div className="absolute inset-x-0 top-0 h-1 bg-[#F95738]" />
+            <div className="absolute -left-10 top-14 h-28 w-[115%] -rotate-6 bg-[#F95738]/12" />
+            <div className="absolute inset-x-8 top-24 h-px bg-white/12" />
+            <div className="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-[#061C36] via-[#061C36]/74 to-transparent" />
+            <div className="absolute right-6 top-7 text-[82px] font-black leading-none text-white/[0.035] md:text-[118px]">CN</div>
+
+            <div className="relative z-20 flex items-center justify-between gap-3">
+              <span className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F95738]">Founder & Mentor</span>
+              <span className="hidden rounded-lg border border-white/10 bg-white/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/72 sm:inline-flex">
+                CyberNurdin
+              </span>
+            </div>
+
+            <Image
+              src="/kewangang-founder-cutout.png"
+              alt="Kewangang Muhammed Nurdin, founder of CyberNurdin"
+              width={1254}
+              height={1254}
+              className="absolute inset-x-0 bottom-0 z-10 mx-auto h-[92%] w-auto max-w-none object-contain object-bottom drop-shadow-[0_26px_34px_rgba(0,0,0,0.36)]"
+              priority
+            />
+
+            <div className="absolute inset-x-5 bottom-5 z-20 rounded-lg border border-white/10 bg-[#031224]/82 p-4 text-white shadow-[0_16px_36px_rgba(0,0,0,0.28)] backdrop-blur md:inset-x-8">
+              <p className="text-xl font-black leading-tight">Kewangang Muhammed Nurdin</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-white/64">
+                Tech mentor, backend developer, and cybersecurity learning builder.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="mb-5 flex items-center gap-3">
+              <CyberNurdinLogoMark className="h-10 w-10" />
+              <span className="text-[11px] font-black uppercase tracking-wide text-[#F95738]">About the founder</span>
+            </div>
+            <h2 className="text-3xl font-black text-[#061C36] md:text-4xl">
+              Led by a builder who understands mentorship, community, and practical tech learning.
+            </h2>
+            <p className="mt-4 text-sm font-semibold leading-7 text-[#061C36]/68">
+              CyberNurdin is led by Kewangang Muhammed Nurdin, a tech mentor and platform builder focused on helping learners move from curiosity to usable cybersecurity skill. His work combines backend development, tutoring, community support, and hands-on learning systems for students who want direction and accountability.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {founderHighlights.map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-lg border border-[#061C36]/8 bg-white p-4 text-sm font-black text-[#061C36]/76">
+                  <Check size={16} className="mt-0.5 shrink-0 text-[#F95738]" />
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="https://bauhaven.com/about"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#061C36]/12 bg-white px-5 text-sm font-black text-[#061C36] transition hover:border-[#F95738]/40 hover:text-[#F95738]"
+              >
+                Portfolio / Work
+                <ExternalLink size={15} />
+              </a>
+              <a
+                href="https://cm.linkedin.com/in/kewangang-muhammed-nurdin-29b53636b"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0B3D77] px-5 text-sm font-black text-white transition hover:bg-[#061C36]"
+              >
+                LinkedIn
+                <span className="grid h-4 min-w-4 place-items-center rounded bg-white/16 text-[10px] font-black">in</span>
+              </a>
+              <Link
+                href="/contact"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#F95738] px-5 text-sm font-black text-white transition hover:bg-[#e94b2f]"
+              >
+                Contact
+                <Mail size={15} />
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

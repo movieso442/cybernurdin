@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import HeroIllustration from './HeroIllustration';
+import CyberNurdinHeroIllustration from '@/components/shared/CyberNurdinHeroIllustration';
 
 export default function HomeHeroSection() {
   return (
@@ -34,7 +34,7 @@ export default function HomeHeroSection() {
           </div>
         </div>
 
-        <HeroIllustration />
+        <CyberNurdinHeroIllustration />
       </div>
     </section>
   );

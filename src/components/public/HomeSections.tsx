@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
   Award,
@@ -17,12 +18,11 @@ import {
   Lock,
   MessageCircle,
   Network,
-  Shield,
-  ShieldCheck,
   Users,
 } from 'lucide-react';
 import { Button, Card, ProgressBar } from '@/components/UI';
 import { iconRegistry, mentorshipPaths } from '@/lib/cybernurdin-data';
+import { CyberNurdinLogoMark } from '@/components/shared/CyberNurdinLogo';
 
 export function HomeHeroSection() {
   return (
@@ -60,8 +60,8 @@ export function HomeHeroSection() {
 }
 
 export function HeroTrustStrip() {
-  const items = [
-    { label: 'Expert Mentors', icon: ShieldCheck },
+  const items: Array<{ label: string; icon?: LucideIcon; logo?: boolean }> = [
+    { label: 'Expert Mentors', logo: true },
     { label: 'Hands-on Projects', icon: BookOpenCheck },
     { label: 'Career Support', icon: BriefcaseBusiness },
     { label: 'Community Access', icon: Users },
@@ -73,7 +73,11 @@ export function HeroTrustStrip() {
         const Icon = item.icon;
         return (
           <div key={item.label} className="flex items-center gap-2 rounded-xl bg-white/8 p-3 text-xs font-black text-white md:bg-[#061C36]/4 md:text-[#061C36]/72">
-            <Icon size={16} className="text-[#F95738]" />
+            {item.logo ? (
+              <CyberNurdinLogoMark className="h-4 w-4" />
+            ) : Icon ? (
+              <Icon size={16} className="text-[#F95738]" />
+            ) : null}
             {item.label}
           </div>
         );
@@ -109,7 +113,7 @@ export function HeroVisualPanel() {
         <div className="flex flex-col items-center justify-center rounded-3xl border border-white/8 bg-[#020C18]/40 p-6">
           <div className="relative grid h-44 w-44 place-items-center rounded-full border border-[#0B3D77]/60">
             <span className="absolute inset-5 rounded-full border border-dashed border-[#F95738]/35" />
-            <Shield size={96} className="fill-[#F95738]/12 text-[#F95738] drop-shadow-[0_0_24px_rgba(249,87,56,0.38)]" />
+            <CyberNurdinLogoMark tone="light" className="h-28 w-28 drop-shadow-[0_0_24px_rgba(249,87,56,0.38)]" />
             <span className="absolute left-4 top-6 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#061C36] text-[#F5D35E]">
               <Lock size={13} />
             </span>
@@ -191,12 +195,13 @@ export function FeaturedPathsSection() {
         </div>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
           {mentorshipPaths.slice(0, 5).map((path) => {
-            const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry] || Shield;
+            const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry];
+            const useLogo = path.iconName === 'shield';
             return (
               <Card key={path.id} className="flex min-h-56 flex-col justify-between p-5">
                 <div>
                   <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#F95738]/16 bg-[#F95738]/10 text-[#F95738]">
-                    <Icon size={21} />
+                    {useLogo ? <CyberNurdinLogoMark className="h-7 w-7" /> : <Icon size={21} />}
                   </span>
                   <h3 className="mt-4 text-sm font-black leading-5">{path.title}</h3>
                   <p className="mt-2 text-xs font-semibold leading-5 text-[#061C36]/62">{path.description}</p>
@@ -215,12 +220,12 @@ export function FeaturedPathsSection() {
 }
 
 export function WhyCyberNurdinSection() {
-  const reasons = [
-    [ShieldCheck, '1:1 Expert Mentorship', 'Get reviewed by cybersecurity mentors who focus on practical defender growth.'],
-    [BookOpenCheck, 'Real-world Projects', 'Build evidence through guided notes, labs, slides, quizzes, and review checkpoints.'],
-    [BriefcaseBusiness, 'Career Advancement', 'Translate learning into portfolios, interview stories, and focused next steps.'],
-    [Calendar, 'Flexible Learning', 'Use YouTube lessons and structured progress around your weekly commitment.'],
-    [MessageCircle, 'Community Access', 'Learn with a focused group of serious cybersecurity mentees.'],
+  const reasons: Array<{ icon?: LucideIcon; logo?: boolean; title: string; description: string }> = [
+    { logo: true, title: '1:1 Expert Mentorship', description: 'Get reviewed by cybersecurity mentors who focus on practical defender growth.' },
+    { icon: BookOpenCheck, title: 'Real-world Projects', description: 'Build evidence through guided notes, labs, slides, quizzes, and review checkpoints.' },
+    { icon: BriefcaseBusiness, title: 'Career Advancement', description: 'Translate learning into portfolios, interview stories, and focused next steps.' },
+    { icon: Calendar, title: 'Flexible Learning', description: 'Use YouTube lessons and structured progress around your weekly commitment.' },
+    { icon: MessageCircle, title: 'Community Access', description: 'Learn with a focused group of serious cybersecurity mentees.' },
   ];
 
   return (
@@ -231,13 +236,17 @@ export function WhyCyberNurdinSection() {
           <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">Guided, selective, and built for defenders.</h2>
         </div>
         <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-5">
-          {reasons.map(([Icon, title, description]) => {
-            const ReasonIcon = Icon as typeof ShieldCheck;
+          {reasons.map((reason) => {
+            const ReasonIcon = reason.icon;
             return (
-              <div key={title as string} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-5">
-                <ReasonIcon size={22} className="text-[#F95738]" />
-                <h3 className="mt-4 text-sm font-black">{title as string}</h3>
-                <p className="mt-2 text-xs font-semibold leading-5 text-[#061C36]/62">{description as string}</p>
+              <div key={reason.title} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-5">
+                {reason.logo ? (
+                  <CyberNurdinLogoMark className="h-7 w-7" />
+                ) : ReasonIcon ? (
+                  <ReasonIcon size={22} className="text-[#F95738]" />
+                ) : null}
+                <h3 className="mt-4 text-sm font-black">{reason.title}</h3>
+                <p className="mt-2 text-xs font-semibold leading-5 text-[#061C36]/62">{reason.description}</p>
               </div>
             );
           })}

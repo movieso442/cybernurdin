@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Mail, MapPin, Phone, Shield } from 'lucide-react';
+import { Mail, MapPin, Phone } from 'lucide-react';
+import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
 
 const quickLinks = [
   { label: 'Home', href: '/' },
@@ -22,9 +23,8 @@ export default function CyberNurdinFooter() {
         <div className="overflow-hidden rounded-lg bg-[#061C36] text-white shadow-[0_18px_36px_rgba(6,28,54,0.15)]">
           <div className="grid gap-9 px-8 py-7 md:grid-cols-[1.4fr_1fr_1fr_1.45fr]">
             <div>
-              <Link href="/" className="flex items-center gap-2">
-                <Shield size={34} className="text-[#F95738]" />
-                <span className="text-2xl font-black tracking-tight">CyberNurdin</span>
+              <Link href="/" aria-label="CyberNurdin home">
+                <CyberNurdinLogo size="md" variant="light" />
               </Link>
               <p className="mt-4 max-w-[250px] text-sm font-medium leading-6 text-white/76">
                 Cybersecurity mentorship for serious learners ready to build real-world skills.
@@ -80,7 +80,7 @@ export default function CyberNurdinFooter() {
           </div>
 
           <div className="border-t border-white/10 py-4 text-center text-sm font-medium text-white/82">
-            © 2026 CyberNurdin. All rights reserved.
+            &copy; 2026 CyberNurdin. All rights reserved.
           </div>
         </div>
       </div>
