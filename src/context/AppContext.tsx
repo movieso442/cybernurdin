@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { adaptSubmissions, buildProgressRecord, CourseProgressRow, EnrollmentRow, SubmissionRow } from '@/lib/progress-adapter';
 import { createSubmission as createSubmissionAction } from '@/lib/actions/submissions';
 
-const DEFAULT_PATH_SLUG = 'introduction-to-cybersecurity';
+const DEFAULT_PATH_ID = 'path-intro';
 
 export type SessionUser = {
   id: string;
@@ -35,7 +35,7 @@ type AppContextType = {
   bookings: Booking[];
   toast: Toast;
   triggerToast: (message: string, type?: 'success' | 'danger' | 'info') => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<SessionUser | null>;
   logout: () => Promise<void>;
   refreshProgress: () => Promise<void>;
   updateProgress: (lessonId: string, update: Partial<{ videoCompleted: boolean; slidesCompleted: boolean; quizPassed: boolean; state: string; score: number }>) => Promise<void>;
@@ -66,31 +66,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setProgress(null);
       setSubmissions([]);
-      return;
+      return null;
     }
 
-    const selectedPath = profile.selected_path || DEFAULT_PATH_SLUG;
-    setUser({
+    const selectedPathValue = profile.selected_path || DEFAULT_PATH_ID;
+    const path = getPathBySlug(selectedPathValue);
+    const activePathId = path?.id || selectedPathValue;
+    const sessionUser: SessionUser = {
       id: profile.id,
       fullName: profile.full_name,
       email: profile.email,
       role: profile.role,
       accessStatus: profile.access_status,
       selectedPath: profile.selected_path,
-      activePathId: selectedPath,
-    });
+      activePathId,
+    };
+    setUser(sessionUser);
 
-    const path = getPathBySlug(selectedPath);
-    if (!path) return;
+    if (!path) return sessionUser;
+    const pathKeys = Array.from(new Set([path.id, path.slug, selectedPathValue]));
 
-    const [{ data: enrollment }, { data: progressRows }, { data: submissionRows }] = await Promise.all([
-      supabase.from('enrollments').select('*').eq('user_id', authUserId).eq('path_id', selectedPath).maybeSingle(),
-      supabase.from('course_progress').select('*').eq('user_id', authUserId).eq('path_id', selectedPath),
-      supabase.from('submissions').select('*').eq('user_id', authUserId).eq('path_id', selectedPath),
+    const [{ data: enrollmentRows }, { data: progressRows }, { data: submissionRows }] = await Promise.all([
+      supabase.from('enrollments').select('*').eq('user_id', authUserId).in('path_id', pathKeys),
+      supabase.from('course_progress').select('*').eq('user_id', authUserId).in('path_id', pathKeys),
+      supabase.from('submissions').select('*').eq('user_id', authUserId).in('path_id', pathKeys),
     ]);
+    const enrollments = ((enrollmentRows as EnrollmentRow[]) || []);
+    const enrollment =
+      enrollments.find((row) => row.path_id === path.id && row.status === 'active') ||
+      enrollments.find((row) => row.status === 'active') ||
+      enrollments[0] ||
+      null;
 
     setProgress(buildProgressRecord(path, (enrollment as EnrollmentRow) || null, (progressRows as CourseProgressRow[]) || []));
     setSubmissions(adaptSubmissions(path, (submissionRows as SubmissionRow[]) || []));
+    return sessionUser;
   }, []);
 
   useEffect(() => {
@@ -128,8 +138,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error || !data.user) {
       throw new Error(error?.message === 'Invalid login credentials' ? 'Incorrect email or password.' : 'Could not sign in. Please try again.');
     }
-    await loadSessionData(data.user.id);
+    const sessionUser = await loadSessionData(data.user.id);
     triggerToast('Welcome back to your mentorship dashboard.', 'success');
+    return sessionUser;
   };
 
   const logout = async () => {

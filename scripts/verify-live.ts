@@ -1,4 +1,5 @@
 import postgres from 'postgres';
+import { createClient } from '@supabase/supabase-js';
 
 const tables = [
   'profiles',
@@ -16,10 +17,26 @@ function maskEmail(email: string) {
   return `${name.slice(0, 2)}***@${domain}`;
 }
 
+async function verifyPasswordLogin(email: string, password: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set.');
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set.');
+
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(`Password login failed for ${maskEmail(email)}: ${error.message}`);
+
+  await supabase.auth.signOut();
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set.');
   if (!process.env.SEED_ADMIN_EMAIL) throw new Error('SEED_ADMIN_EMAIL is not set.');
   if (!process.env.SEED_STUDENT_EMAIL) throw new Error('SEED_STUDENT_EMAIL is not set.');
+  if (!process.env.SEED_ADMIN_PASSWORD) throw new Error('SEED_ADMIN_PASSWORD is not set.');
+  if (!process.env.SEED_STUDENT_PASSWORD) throw new Error('SEED_STUDENT_PASSWORD is not set.');
 
   const sql = postgres(process.env.DATABASE_URL, { prepare: false });
   const adminEmail = process.env.SEED_ADMIN_EMAIL;
@@ -75,6 +92,10 @@ async function main() {
   );
   console.log('Seed student row counts:', seedCounts);
   console.table(rls);
+
+  await verifyPasswordLogin(adminEmail, process.env.SEED_ADMIN_PASSWORD);
+  await verifyPasswordLogin(studentEmail, process.env.SEED_STUDENT_PASSWORD);
+  console.log('Seed password login check: passed for admin and student.');
 
   await sql.end();
 }

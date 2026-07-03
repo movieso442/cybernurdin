@@ -12,8 +12,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const profile = await getAuthedProfile();
 
   if (!profile) redirect('/login');
+  if (profile.role === 'admin') redirect('/admin/overview');
   if (profile.accessStatus !== 'active') redirect('/activate-access');
-  if (profile.role !== 'mentee' && profile.role !== 'admin') redirect('/login');
+  if (profile.role !== 'mentee') redirect('/login');
 
   return <DashboardShell>{children}</DashboardShell>;
 }

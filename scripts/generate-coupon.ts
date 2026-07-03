@@ -10,7 +10,7 @@ import { generateCouponCode, hashCoupon } from '../src/lib/coupon';
  *   npm run generate-coupon -- someone@example.com introduction-to-cybersecurity
  */
 async function main() {
-  const [email, allowedPath = 'introduction-to-cybersecurity'] = process.argv.slice(2);
+  const [email, allowedPath = 'path-intro'] = process.argv.slice(2);
 
   if (!email) {
     console.error('Usage: npm run generate-coupon -- <email> [allowed-path-slug]');

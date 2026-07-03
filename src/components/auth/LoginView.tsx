@@ -21,8 +21,8 @@ export function LoginView() {
     event.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      router.push('/dashboard');
+      const sessionUser = await login(email, password);
+      router.push(sessionUser?.role === 'admin' ? '/admin/overview' : '/dashboard');
       router.refresh();
     } catch (error) {
       triggerToast(error instanceof Error ? error.message : 'Login failed.', 'danger');

@@ -16,7 +16,7 @@ export async function enrollUserInPath(userId: string, pathSlug: string) {
     .insert(enrollments)
     .values({
       userId,
-      pathId: pathSlug,
+      pathId: path.id,
       status: 'active',
       progress: 0,
       currentModuleId: path.units[0]?.id,
@@ -28,7 +28,7 @@ export async function enrollUserInPath(userId: string, pathSlug: string) {
       .insert(courseProgress)
       .values({
         userId,
-        pathId: pathSlug,
+        pathId: path.id,
         moduleId: unit.id,
         status: index === 0 ? 'unlocked' : 'locked',
       })

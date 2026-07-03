@@ -3,9 +3,10 @@
 import type React from 'react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Calendar, Check, CheckCircle2, ClipboardList, Copy, ExternalLink, Plus, Radio, Upload, Users, X } from 'lucide-react';
-import { Booking, calculatePathProgress, getAllLessons, getPathBySlug, mentorshipPaths } from '@/lib/cybernurdin-data';
+import { ArrowRight, Calendar, Check, CheckCircle2, ClipboardList, Copy, ExternalLink, KeyRound, Plus, Radio, Route, Upload, Users, X } from 'lucide-react';
+import { Booking, getAllLessons, getPathBySlug, mentorshipPaths } from '@/lib/cybernurdin-data';
 import { approveApplication, rejectApplication } from '@/lib/actions/applications';
+import { assignMenteePath, issueAccessCoupon } from '@/lib/actions/admin';
 import { reviewSubmission } from '@/lib/actions/submissions';
 import { createClient } from '@/lib/supabase/client';
 import { Badge, Button, Card, ProgressBar } from '@/components/UI';
@@ -65,6 +66,23 @@ export type ProfileRow = {
   created_at: string;
 };
 
+export type EnrollmentAdminRow = {
+  user_id: string;
+  path_id: string;
+  status: string;
+  progress: number;
+  current_module_id: string | null;
+};
+
+export type MenteeAdminRow = ProfileRow & {
+  active_path_id: string;
+  active_path_title: string;
+  enrollment_status: string;
+  progress: number;
+  total_submissions: number;
+  pending_submissions: number;
+};
+
 export type SubmissionRow = {
   id: string;
   user_id: string;
@@ -119,19 +137,61 @@ function useAdminSubmissions() {
 }
 
 function useAdminMentees() {
-  const [mentees, setMentees] = useState<ProfileRow[]>([]);
+  const [mentees, setMentees] = useState<MenteeAdminRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const reload = async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const [{ data: profileRows }, { data: enrollmentRows }, { data: submissionRows }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('role', 'mentee').order('created_at', { ascending: false }),
+      supabase.from('enrollments').select('user_id,path_id,status,progress,current_module_id'),
+      supabase.from('submissions').select('user_id,status'),
+    ]);
+
+    const enrollmentsByUser = new Map<string, EnrollmentAdminRow[]>();
+    ((enrollmentRows as EnrollmentAdminRow[]) || []).forEach((row) => {
+      enrollmentsByUser.set(row.user_id, [...(enrollmentsByUser.get(row.user_id) || []), row]);
+    });
+
+    const submissionsByUser = new Map<string, { total: number; pending: number }>();
+    ((submissionRows as Pick<SubmissionRow, 'user_id' | 'status'>[]) || []).forEach((row) => {
+      const current = submissionsByUser.get(row.user_id) || { total: 0, pending: 0 };
+      current.total += 1;
+      if (row.status === 'pending' || row.status === 'under-review') current.pending += 1;
+      submissionsByUser.set(row.user_id, current);
+    });
+
+    const nextMentees = ((profileRows as ProfileRow[]) || []).map((profile) => {
+      const userEnrollments = enrollmentsByUser.get(profile.id) || [];
+      const activeEnrollment =
+        userEnrollments.find((row) => row.status === 'active' && row.path_id === profile.selected_path) ||
+        userEnrollments.find((row) => row.status === 'active') ||
+        userEnrollments.find((row) => row.path_id === profile.selected_path);
+      const activePathId = profile.selected_path || activeEnrollment?.path_id || mentorshipPaths[0].id;
+      const path = getPathBySlug(activePathId) || mentorshipPaths[0];
+      const submissionCounts = submissionsByUser.get(profile.id) || { total: 0, pending: 0 };
+
+      return {
+        ...profile,
+        active_path_id: activePathId,
+        active_path_title: path.title,
+        enrollment_status: activeEnrollment?.status || 'not enrolled',
+        progress: activeEnrollment?.progress || 0,
+        total_submissions: submissionCounts.total,
+        pending_submissions: submissionCounts.pending,
+      };
+    });
+
+    setMentees(nextMentees);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      const supabase = createClient();
-      const { data } = await supabase.from('profiles').select('*').eq('role', 'mentee').order('created_at', { ascending: false });
-      setMentees((data as ProfileRow[]) || []);
-      setLoading(false);
-    })();
+    reload();
   }, []);
 
-  return { mentees, loading };
+  return { mentees, loading, reload };
 }
 
 function useAdminSessions() {
@@ -176,11 +236,13 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 export function AdminOverviewPage() {
   const { applications, loading: loadingApplications } = useAdminApplications();
   const { submissions, loading: loadingSubmissions } = useAdminSubmissions();
+  const { mentees, loading: loadingMentees } = useAdminMentees();
   const { sessions } = useAdminSessions();
 
   const pendingApplications = applications.filter((item) => item.status === 'pending').length;
   const pendingSubmissions = submissions.filter((item) => item.status === 'pending' || item.status === 'under-review').length;
   const upcomingSessions = sessions.filter((item) => item.status === 'scheduled' || item.status === 'live').length;
+  const activeMentees = mentees.filter((item) => item.access_status === 'active').length;
   const recentApplications = applications.filter((item) => item.status === 'pending').slice(0, 3);
 
   return (
@@ -190,10 +252,11 @@ export function AdminOverviewPage() {
         body="Only the mentorship operations that need attention."
         action={<Link href="/admin/applications"><Button>Review Applications <ArrowRight size={15} /></Button></Link>}
       />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {([
           ['Pending applications', loadingApplications ? '—' : pendingApplications, ClipboardList],
           ['Submissions to review', loadingSubmissions ? '—' : pendingSubmissions, Upload],
+          ['Total mentees', loadingMentees ? '—' : activeMentees, Users],
           ['Upcoming sessions', upcomingSessions, Calendar],
         ] as [string, string | number, typeof ClipboardList][]).map(([label, value, StatIcon]) => {
           return (
@@ -222,6 +285,7 @@ export function AdminOverviewPage() {
           <h2 className="text-xl font-black">Quick Actions</h2>
           <div className="mt-4 grid gap-3">
             <Link href="/admin/applications"><Button className="w-full justify-between">Review Applications <ArrowRight size={15} /></Button></Link>
+            <Link href="/admin/mentees"><Button className="w-full justify-between" variant="secondary">Manage Mentees <ArrowRight size={15} /></Button></Link>
             <Link href="/admin/submissions"><Button className="w-full justify-between" variant="secondary">Review Submissions <ArrowRight size={15} /></Button></Link>
             <Link href="/admin/sessions"><Button className="w-full justify-between" variant="secondary">Create Session <ArrowRight size={15} /></Button></Link>
             <Link href="/admin/content"><Button className="w-full justify-between" variant="secondary">Add Lesson <ArrowRight size={15} /></Button></Link>
@@ -239,6 +303,12 @@ export function AdminApplicationsPage() {
   const [adminNote, setAdminNote] = useState('');
   const [revealedCoupon, setRevealedCoupon] = useState<{ applicationId: string; code: string; emailSent: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [manualPathId, setManualPathId] = useState(mentorshipPaths[0].id);
+  const [manualProcessing, setManualProcessing] = useState(false);
+  const [manualCoupon, setManualCoupon] = useState<{ code: string; email: string; pathTitle: string; emailSent: boolean } | null>(null);
+  const [manualCopied, setManualCopied] = useState(false);
 
   const selected = applications.find((item) => item.id === selectedId) || applications.find((item) => item.status === 'pending') || applications[0];
 
@@ -271,6 +341,27 @@ export function AdminApplicationsPage() {
     await navigator.clipboard.writeText(revealedCoupon.code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleIssueManualCoupon = async (event: FormEvent) => {
+    event.preventDefault();
+    setManualProcessing(true);
+    try {
+      const result = await issueAccessCoupon({ email: manualEmail, fullName: manualName, pathId: manualPathId });
+      setManualCoupon({ code: result.couponCode, email: result.email, pathTitle: result.pathTitle, emailSent: result.emailSent });
+      setManualEmail('');
+      setManualName('');
+      await reload();
+    } finally {
+      setManualProcessing(false);
+    }
+  };
+
+  const copyManualCoupon = async () => {
+    if (!manualCoupon) return;
+    await navigator.clipboard.writeText(manualCoupon.code);
+    setManualCopied(true);
+    window.setTimeout(() => setManualCopied(false), 2000);
   };
 
   return (
@@ -354,31 +445,145 @@ export function AdminApplicationsPage() {
           ) : <EmptyState title="Select an applicant" body="Choose an application to review details." />}
         </Card>
       </div>
+
+      <Card hoverEffect={false} className="mt-5 p-6">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-xl font-black">Issue Access Coupon</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-[#061C36]/58">Create a coupon manually and assign it to a specific mentorship path.</p>
+          </div>
+          <Badge>Manual access</Badge>
+        </div>
+        <form onSubmit={handleIssueManualCoupon} className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_1.1fr_auto]">
+          <input
+            className="cn-input"
+            type="email"
+            value={manualEmail}
+            onChange={(event) => setManualEmail(event.target.value)}
+            placeholder="Mentee email"
+            required
+          />
+          <input
+            className="cn-input"
+            value={manualName}
+            onChange={(event) => setManualName(event.target.value)}
+            placeholder="Full name optional"
+          />
+          <select className="cn-input" value={manualPathId} onChange={(event) => setManualPathId(event.target.value)}>
+            {mentorshipPaths.map((path) => (
+              <option key={path.id} value={path.id}>{path.title}</option>
+            ))}
+          </select>
+          <Button type="submit" disabled={manualProcessing}>
+            <KeyRound size={15} />
+            {manualProcessing ? 'Generating...' : 'Generate'}
+          </Button>
+        </form>
+
+        {manualCoupon && (
+          <div className="mt-5 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">Coupon generated - copy it now</p>
+            <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="break-all text-lg font-black tracking-wide text-[#061C36]">{manualCoupon.code}</p>
+                <p className="mt-1 text-xs font-bold text-emerald-800">
+                  {manualCoupon.email} - {manualCoupon.pathTitle} - {manualCoupon.emailSent ? 'email queued' : 'copy manually'}
+                </p>
+              </div>
+              <button type="button" onClick={copyManualCoupon} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-black text-emerald-700 shadow">
+                {manualCopied ? <Check size={16} /> : <Copy size={16} />}
+                {manualCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
 export function AdminMenteesPage() {
-  const { mentees, loading } = useAdminMentees();
+  const { mentees, loading, reload } = useAdminMentees();
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+
+  const activeCount = mentees.filter((mentee) => mentee.access_status === 'active').length;
+  const averageProgress = mentees.length ? Math.round(mentees.reduce((total, mentee) => total + mentee.progress, 0) / mentees.length) : 0;
+
+  const handleAssignPath = async (mentee: MenteeAdminRow, pathId: string) => {
+    setAssigningId(mentee.id);
+    setMessage('');
+    try {
+      const result = await assignMenteePath(mentee.id, pathId);
+      setMessage(`${mentee.full_name} assigned to ${result.pathTitle}.`);
+      await reload();
+    } finally {
+      setAssigningId(null);
+    }
+  };
 
   return (
     <div>
-      <PageTitle title="Mentees" body="Active learner accounts and their assigned mentorship path." />
+      <PageTitle
+        title="Mentees"
+        body="Manage active learner accounts, assign paths, and watch progress from one operational view."
+        action={<Badge>{activeCount} active mentees</Badge>}
+      />
+      <div className="mb-5 grid gap-4 md:grid-cols-3">
+        <Card hoverEffect={false} className="p-5">
+          <Users className="text-[#F95738]" size={22} />
+          <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">Total mentees</p>
+          <p className="mt-1 text-3xl font-black">{mentees.length}</p>
+        </Card>
+        <Card hoverEffect={false} className="p-5">
+          <Route className="text-[#F95738]" size={22} />
+          <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">Average progress</p>
+          <p className="mt-1 text-3xl font-black">{averageProgress}%</p>
+        </Card>
+        <Card hoverEffect={false} className="p-5">
+          <Upload className="text-[#F95738]" size={22} />
+          <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">Pending evidence</p>
+          <p className="mt-1 text-3xl font-black">{mentees.reduce((total, mentee) => total + mentee.pending_submissions, 0)}</p>
+        </Card>
+      </div>
+      {message && <p className="mb-5 rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
       <Card hoverEffect={false} className="p-6">
         {loading ? (
           <p className="py-6 text-sm font-semibold text-[#061C36]/48">Loading mentees...</p>
         ) : (
         <div className="divide-y divide-[#061C36]/8">
           {mentees.length ? mentees.map((mentee) => {
-            const path = getPathBySlug(mentee.selected_path || '') || mentorshipPaths[0];
             return (
-              <div key={mentee.id} className="grid gap-3 py-4 md:grid-cols-[1fr_220px_160px_120px] md:items-center">
+              <div key={mentee.id} className="grid gap-4 py-4 lg:grid-cols-[1fr_280px_190px_150px_120px] lg:items-center">
                 <div>
                   <p className="font-black">{mentee.full_name}</p>
                   <p className="text-sm font-semibold text-[#061C36]/54">{mentee.email}</p>
+                  <p className="mt-1 text-xs font-bold uppercase text-[#061C36]/36">{mentee.enrollment_status}</p>
                 </div>
-                <p className="text-sm font-bold">{path.title}</p>
-                <div><ProgressBar value={calculatePathProgress(path, null)} /></div>
+                <label>
+                  <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">Assigned path</span>
+                  <select
+                    className="cn-input"
+                    value={mentee.active_path_id}
+                    disabled={assigningId === mentee.id}
+                    onChange={(event) => handleAssignPath(mentee, event.target.value)}
+                  >
+                    {mentorshipPaths.map((path) => (
+                      <option key={path.id} value={path.id}>{path.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-xs font-black text-[#061C36]/50">
+                    <span>Progress</span>
+                    <span>{mentee.progress}%</span>
+                  </div>
+                  <ProgressBar value={mentee.progress} />
+                </div>
+                <div className="text-sm font-bold text-[#061C36]/58">
+                  <p>{mentee.pending_submissions} pending</p>
+                  <p className="text-xs text-[#061C36]/38">{mentee.total_submissions} total submissions</p>
+                </div>
                 <Badge>{mentee.access_status}</Badge>
               </div>
             );

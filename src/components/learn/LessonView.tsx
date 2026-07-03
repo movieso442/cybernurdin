@@ -315,7 +315,7 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
       </div>
     );
   }
-  if (user.activePathId !== data.path.id) {
+  if (user.activePathId !== data.path.id && user.activePathId !== data.path.slug) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#061C36] p-6 text-center text-white">
         <div>

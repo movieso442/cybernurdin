@@ -26,7 +26,7 @@ export async function submitApplication(input: SubmitApplicationInput) {
     fullName,
     email: input.email.trim().toLowerCase(),
     phone: input.phone?.trim() || null,
-    selectedPath: input.preferredPathId || 'introduction-to-cybersecurity',
+    selectedPath: input.preferredPathId || 'path-intro',
     motivation: input.motivation?.trim() || null,
     status: 'pending',
   });

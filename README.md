@@ -41,7 +41,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - `DATABASE_URL` — Supabase Postgres connection string (server-only, never exposed to the browser). Use the **transaction pooler** URL (port 6543) — the app connects with `prepare: false` to match.
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — safe to expose to the browser; used by the Supabase client for auth and RLS-protected reads.
 - `SUPABASE_SERVICE_ROLE_KEY` — **server-only**, bypasses Row Level Security. Only imported from `src/lib/supabase/admin.ts`, used in Server Actions and scripts. Never import it from a Client Component.
-- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_FULL_NAME` and `SEED_STUDENT_*` — used by `npm run seed`. Leave passwords blank to have strong ones generated and printed once.
+- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_FULL_NAME` and `SEED_STUDENT_*` — used by `npm run seed`. Leave passwords blank to have strong ones generated and printed once. Quote passwords that contain `#`, otherwise env parsers treat the rest of the line as a comment.
 - `EMAIL_PROVIDER_API_KEY` / `FROM_EMAIL` — optional. Without these, approving an application still generates a coupon; the admin UI shows it once so it can be copied manually.
 - `NEXT_PUBLIC_SITE_URL` — the production URL (e.g. `https://cybernurdin.com`), used to resolve SEO metadata, sitemap, and Open Graph image URLs. **Set this explicitly before deploying** — do not rely on the local-dev fallback in production.
 - `BBB_SERVER_URL` / `BBB_SECRET` — optional, future-only. BigBlueButton live sessions are not part of this deployment; the Sessions pages use a plain external meeting link instead.

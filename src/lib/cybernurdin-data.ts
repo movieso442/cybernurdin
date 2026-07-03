@@ -878,7 +878,7 @@ export function getPathBySlug(slug: string) {
 }
 
 export function getPathById(pathId: string) {
-  return mentorshipPaths.find((path) => path.id === pathId);
+  return mentorshipPaths.find((path) => path.id === pathId || path.slug === pathId);
 }
 
 export function getLesson(pathSlug: string, lessonId: string) {
