@@ -315,7 +315,7 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
       </div>
     );
   }
-  if (user.activePathId !== data.path.id) {
+  if (user.activePathId !== data.path.id && user.activePathId !== data.path.slug) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#061C36] p-6 text-center text-white">
         <div>
@@ -410,6 +410,14 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
         </section>
 
         <YouTubeLessonPlayer videoId={lesson.youtubeVideoId} title={lesson.title} />
+        <a
+          href={lesson.youtube.watchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-black text-[#061C36]/48 hover:text-[#F95738]"
+        >
+          Watch on YouTube <ExternalLink size={12} />
+        </a>
 
         <div className="mt-4 flex items-center gap-3">
           {videoWatched ? (

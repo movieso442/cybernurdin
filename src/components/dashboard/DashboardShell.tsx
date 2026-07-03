@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
+  Award,
   BarChart3,
   BookOpen,
   Calendar,
@@ -24,10 +25,13 @@ const dashboardNav = [
   { href: '/dashboard/my-path', label: 'My Path', icon: Route },
   { href: '/dashboard/lessons', label: 'Lessons', icon: BookOpen },
   { href: '/dashboard/submissions', label: 'Submissions', icon: Upload },
+  { href: '/dashboard/certifications', label: 'Certifications', icon: Award },
   { href: '/dashboard/sessions', label: 'Sessions', icon: Calendar },
   { href: '/dashboard/progress', label: 'Progress', icon: BarChart3 },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
+
+const mobileTabNav = dashboardNav.filter((item) => item.href !== '/dashboard/certifications');
 
 function Sidebar({ close }: { close?: () => void }) {
   const pathname = usePathname();
@@ -74,9 +78,10 @@ function Sidebar({ close }: { close?: () => void }) {
       <div className="border-t border-white/8 p-4">
         <button
           type="button"
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.push('/login');
+            router.refresh();
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-white/62 hover:bg-white/6 hover:text-white"
         >
@@ -90,15 +95,13 @@ function Sidebar({ close }: { close?: () => void }) {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, isLoadingUser } = useApp();
+  const { isLoadingUser } = useApp();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isLoadingUser && !user) router.push('/login');
-  }, [isLoadingUser, router, user]);
-
-  if (isLoadingUser || !user) {
+  // Authorization is already enforced server-side in src/app/dashboard/layout.tsx
+  // before this component ever renders — this loading state just covers the
+  // brief window while the browser Supabase client hydrates `user`/`progress`.
+  if (isLoadingUser) {
     return (
       <div className="grid min-h-screen place-items-center bg-[#061C36] text-white">
         <div className="text-center">
@@ -135,7 +138,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">{children}</div>
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-[#061C36]/10 bg-white/94 p-2 backdrop-blur lg:hidden">
-        {dashboardNav.map((item) => {
+        {mobileTabNav.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
-import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Tag, User, UserPlus } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, Lock, User, UserPlus } from 'lucide-react';
 import { Button, Card, Input } from '@/components/UI';
 import { useApp } from '@/context/AppContext';
 import { BrandLockup } from '@/components/public/PublicChrome';
@@ -12,9 +12,8 @@ import CyberNurdinLogo, { CyberNurdinLogoMark } from '@/components/shared/CyberN
 export function LoginView() {
   const router = useRouter();
   const { login, triggerToast } = useApp();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [couponCode, setCouponCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +21,9 @@ export function LoginView() {
     event.preventDefault();
     setLoading(true);
     try {
-      await login(identifier, password, couponCode);
-      router.push('/dashboard/overview');
+      const sessionUser = await login(email, password);
+      router.push(sessionUser?.role === 'admin' ? '/admin/overview' : '/dashboard');
+      router.refresh();
     } catch (error) {
       triggerToast(error instanceof Error ? error.message : 'Login failed.', 'danger');
     } finally {
@@ -68,7 +68,7 @@ export function LoginView() {
           </div>
           <Card hoverEffect={false} className="mt-7 p-6 md:p-7">
             <form onSubmit={submit} className="space-y-5">
-              <Input label="Email or Username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} icon={<User size={15} />} placeholder="you@example.com" required />
+              <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} icon={<User size={15} />} placeholder="you@example.com" required />
               <Input
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
@@ -83,12 +83,8 @@ export function LoginView() {
                   </button>
                 }
               />
-              <div className="rounded-lg border border-dashed border-[#F95738]/42 bg-[#F95738]/6 p-4">
-                <Input label="Coupon Code" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} icon={<Tag size={15} />} placeholder="Enter coupon from email" required />
-                <p className="mt-2 text-xs font-bold leading-5 text-[#F95738]">Use the coupon code sent to your email or shown after signup.</p>
-              </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Verifying...' : 'Log In'}
+                {loading ? 'Signing in...' : 'Log In'}
                 <ArrowRight size={15} />
               </Button>
             </form>
@@ -97,20 +93,31 @@ export function LoginView() {
             <div className="rounded-lg border border-[#061C36]/8 bg-white/80 p-4 shadow-[0_12px_28px_rgba(6,28,54,0.045)]">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F95738]/10 text-[#F95738]">
-                  <UserPlus size={17} />
+                  <KeyRound size={17} />
                 </span>
                 <div>
-                  <p className="text-sm font-black text-[#061C36]">New to CyberNurdin?</p>
-                  <Link href="/signup" className="mt-1 inline-flex items-center gap-1 text-sm font-black text-[#F95738] hover:text-[#E64A2D]">
-                    Create your learner account
+                  <p className="text-sm font-black text-[#061C36]">Have a coupon code from an approved application?</p>
+                  <Link href="/activate-access" className="mt-1 inline-flex items-center gap-1 text-sm font-black text-[#F95738] hover:text-[#E64A2D]">
+                    Activate your access
                     <ArrowRight size={14} />
                   </Link>
                 </div>
               </div>
             </div>
-            <p className="rounded-lg border border-[#061C36]/8 bg-white/60 p-4 text-xs font-semibold leading-5 text-[#061C36]/58">
-              Already applied? Use your email or username, password, and the coupon code from your signup email.
-            </p>
+            <div className="rounded-lg border border-[#061C36]/8 bg-white/80 p-4 shadow-[0_12px_28px_rgba(6,28,54,0.045)]">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#F95738]/10 text-[#F95738]">
+                  <UserPlus size={17} />
+                </span>
+                <div>
+                  <p className="text-sm font-black text-[#061C36]">New to CyberNurdin?</p>
+                  <Link href="/signup" className="mt-1 inline-flex items-center gap-1 text-sm font-black text-[#F95738] hover:text-[#E64A2D]">
+                    Apply for mentorship
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -12,6 +12,7 @@ import {
   Clock,
   ExternalLink,
   GraduationCap,
+  Lock,
   Mail,
   MessageSquare,
   Phone,
@@ -168,19 +169,26 @@ export function CoursesPageView() {
           {filtered.map((path) => {
             const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry];
             const useLogo = path.iconName === 'shield';
+            const comingSoon = path.availability === 'coming-soon';
             return (
-              <Card key={path.id} className="flex min-h-[360px] flex-col justify-between p-6">
+              <Card key={path.id} className={`flex min-h-[360px] flex-col justify-between p-6 ${comingSoon ? 'opacity-90' : ''}`}>
                 <div>
                   <div className="flex items-start justify-between gap-4">
                     <span className="grid h-12 w-12 place-items-center rounded-2xl border border-[#F95738]/16 bg-[#F95738]/10 text-[#F95738]">
                       {useLogo ? <CyberNurdinLogoMark className="h-8 w-8" /> : <Icon size={24} />}
                     </span>
-                    <Badge>{path.level}</Badge>
+                    {comingSoon ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#061C36]/12 bg-[#FAF7F0] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#061C36]/50">
+                        <Lock size={11} /> Coming Soon
+                      </span>
+                    ) : (
+                      <Badge>{path.level}</Badge>
+                    )}
                   </div>
                   <h2 className="mt-5 text-xl font-black">{path.title}</h2>
                   <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/62">{path.description}</p>
                   <div className="mt-5 grid grid-cols-2 gap-3 text-xs font-black text-[#061C36]/52">
-                    <span className="flex items-center gap-1.5"><Clock size={14} className="text-[#F95738]" />{path.duration}</span>
+                    <span className="flex items-center gap-1.5"><Clock size={14} className="text-[#F95738]" />{comingSoon ? 'Coming soon' : path.duration}</span>
                     <span className="flex items-center gap-1.5"><User size={14} className="text-[#F95738]" />{path.mentorName}</span>
                   </div>
                   <ul className="mt-5 space-y-2 text-sm font-bold text-[#061C36]/70">
@@ -191,9 +199,15 @@ export function CoursesPageView() {
                 </div>
                 <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#061C36]/8 pt-4">
                   <Link href={`/paths/${path.slug}`} className="text-xs font-black uppercase tracking-wide text-[#F95738]">View Path</Link>
-                  <Link href="/apply">
-                    <Button className="min-h-9 px-4 py-2 text-xs">Apply</Button>
-                  </Link>
+                  {comingSoon ? (
+                    <Button variant="secondary" disabled className="min-h-9 px-4 py-2 text-xs">
+                      <Lock size={13} /> Coming Soon
+                    </Button>
+                  ) : (
+                    <Link href="/apply">
+                      <Button className="min-h-9 px-4 py-2 text-xs">Apply</Button>
+                    </Link>
+                  )}
                 </div>
               </Card>
             );
@@ -208,26 +222,39 @@ export function PathPreviewPageView({ slug }: { slug: string }) {
   const path = mentorshipPaths.find((item) => item.slug === slug) || mentorshipPaths[0];
   const Icon = iconRegistry[path.iconName as keyof typeof iconRegistry];
   const useLogo = path.iconName === 'shield';
+  const comingSoon = path.availability === 'coming-soon';
 
   return (
     <main className="cn-grid-bg">
       <section className="cn-container py-14">
         <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <Badge>{path.level}</Badge>
+            {comingSoon ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#061C36]/12 bg-[#FAF7F0] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#061C36]/54">
+                <Lock size={12} /> Coming Soon
+              </span>
+            ) : (
+              <Badge>{path.level}</Badge>
+            )}
             <h1 className="mt-4 text-4xl font-black tracking-tight">{path.title}</h1>
             <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-[#061C36]/66">{path.description}</p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/apply"><Button>Apply for Mentorship</Button></Link>
+              {comingSoon ? (
+                <Link href="/apply"><Button variant="secondary">Apply to Join Waitlist</Button></Link>
+              ) : (
+                <Link href="/apply"><Button>Apply for Mentorship</Button></Link>
+              )}
               <Link href="/courses"><Button variant="secondary">Back to Paths</Button></Link>
             </div>
           </div>
           <Card className="p-6">
             {useLogo ? <CyberNurdinLogoMark className="h-12 w-12" /> : <Icon size={38} className="text-[#F95738]" />}
             <div className="mt-5 grid gap-3 text-sm font-bold text-[#061C36]/68">
-              <div className="rounded-xl bg-[#FAF7F0] p-4">Duration: {path.duration}</div>
+              <div className="rounded-xl bg-[#FAF7F0] p-4">Duration: {comingSoon ? 'Announced closer to launch' : path.duration}</div>
               <div className="rounded-xl bg-[#FAF7F0] p-4">Mentor: {path.mentorName}</div>
-              <div className="rounded-xl bg-[#FAF7F0] p-4">Access: assigned after approval and coupon login</div>
+              <div className="rounded-xl bg-[#FAF7F0] p-4">
+                {comingSoon ? 'Status: Future mentorship track — not yet open for enrollment' : 'Access: assigned after approval and coupon login'}
+              </div>
             </div>
           </Card>
         </div>
@@ -235,19 +262,29 @@ export function PathPreviewPageView({ slug }: { slug: string }) {
       <section className="cn-container pb-20">
         <div className="grid gap-5 lg:grid-cols-[1fr_0.6fr]">
           <Card className="p-6">
-            <h2 className="text-xl font-black">Path units preview</h2>
-            <div className="mt-5 space-y-4">
-              {path.units.map((unit) => (
-                <div key={unit.id} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-4">
-                  <h3 className="font-black">{unit.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-[#061C36]/60">{unit.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge>{unit.modules.length} modules</Badge>
-                    <Badge>{unit.estimatedDuration}</Badge>
+            <h2 className="text-xl font-black">{comingSoon ? 'Roadmap outline' : 'Path units preview'}</h2>
+            {comingSoon ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-[#061C36]/14 bg-[#FAF7F0] p-6 text-center">
+                <Lock size={22} className="mx-auto mb-3 text-[#061C36]/28" />
+                <p className="font-black">Full curriculum coming soon</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/56">
+                  This mentorship track is in development. Apply now to join the waitlist and be notified when it opens.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                {path.units.map((unit) => (
+                  <div key={unit.id} className="rounded-2xl border border-[#061C36]/8 bg-[#FAF7F0] p-4">
+                    <h3 className="font-black">{unit.title}</h3>
+                    <p className="mt-1 text-sm font-semibold text-[#061C36]/60">{unit.description}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge>{unit.modules.length} modules</Badge>
+                      <Badge>{unit.estimatedDuration}</Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
           <Card className="p-6">
             <h2 className="text-xl font-black">What you will learn</h2>

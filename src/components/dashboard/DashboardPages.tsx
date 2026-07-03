@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import {
   AlertCircle,
+  Award,
   ArrowRight,
   BarChart3,
   BookOpen,
@@ -13,11 +14,13 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  GraduationCap,
   Lock,
   Play,
   Radio,
   Send,
   Shield,
+  Sparkles,
   Trophy,
   Upload,
   Video,
@@ -32,8 +35,10 @@ import {
   getCurrentLesson,
   getPathById,
   getUnitState,
+  guidedCertificationPathways,
   mentorshipPaths,
 } from '@/lib/cybernurdin-data';
+import { displayStatusClasses, getDisplayStatus } from '@/lib/status';
 import { useApp } from '@/context/AppContext';
 
 function useActivePath() {
@@ -105,8 +110,11 @@ function submissionBadge(status: EvidenceSubmission['status']) {
 }
 
 export function DashboardOverviewPage() {
-  const { user, bookings, submissions } = useApp();
+  const { user, bookings, submissions, progress } = useApp();
   const { path, percent, currentLesson, currentUnit } = useActivePath();
+  const lockedUnits = path.units.filter((unit) => getUnitState(path, unit, progress) === 'locked');
+  const comingSoonPaths = mentorshipPaths.filter((item) => item.availability === 'coming-soon');
+  const certificateReady = percent === 100;
   const nextSession = upcomingSession(bookings);
   const lessonHref = `/learn/${path.slug}/lessons/${currentLesson?.id}`;
 
@@ -178,7 +186,7 @@ export function DashboardOverviewPage() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-wide text-[#061C36]/40">Current Unit</p>
               <h3 className="mt-1 font-black">{currentUnit?.title}</h3>
-              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/40">Next Required Lesson</p>
+              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/40">Today&apos;s Next Step</p>
               <h3 className="mt-1 text-xl font-black">{currentLesson?.title}</h3>
               <p className="mt-1 text-sm font-semibold leading-6 text-[#061C36]/56">{currentLesson?.description}</p>
             </div>
@@ -198,8 +206,8 @@ export function DashboardOverviewPage() {
               </span>
             </div>
             <p className="mt-3 text-sm font-semibold text-[#061C36]/54">{sessionLabel(nextSession)}</p>
-            {nextSession?.bbbMeetingId ? (
-              <a href={`/api/bbb/join?meetingId=${encodeURIComponent(nextSession.bbbMeetingId)}&fullName=${encodeURIComponent(user?.fullName || 'CyberNurdin Mentee')}&role=attendee&userId=${encodeURIComponent(user?.id || 'mentee')}`}>
+            {nextSession?.attendeeJoinUrl ? (
+              <a href={nextSession.attendeeJoinUrl} target="_blank" rel="noopener noreferrer">
                 <Button className="mt-4 w-full">Join Session <Radio size={15} /></Button>
               </a>
             ) : (
@@ -259,12 +267,105 @@ export function DashboardOverviewPage() {
           </div>
         </div>
       )}
+
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        <Card hoverEffect={false} className="p-5">
+          <div className="flex items-center gap-2">
+            <Lock size={15} className="text-[#061C36]/40" />
+            <h2 className="font-black">Locked Upcoming Modules</h2>
+          </div>
+          {lockedUnits.length ? (
+            <div className="mt-4 space-y-2">
+              {lockedUnits.map((unit) => (
+                <div key={unit.id} className="flex items-center justify-between gap-3 rounded-lg bg-[#FAF7F0] px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-[#061C36]/68">{unit.title}</p>
+                    <p className="mt-0.5 text-xs font-semibold text-[#061C36]/44">Unlocks after your current module is approved</p>
+                  </div>
+                  <Lock size={14} className="shrink-0 text-[#061C36]/28" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm font-semibold text-[#061C36]/48">Every module in your active path is unlocked.</p>
+          )}
+        </Card>
+
+        <Card hoverEffect={false} className="overflow-hidden p-0">
+          <div className={`p-5 ${certificateReady ? 'bg-[#061C36] text-white' : ''}`}>
+            <div className="flex items-center gap-2">
+              <Trophy size={16} className={certificateReady ? 'text-[#F5D35E]' : 'text-[#061C36]/40'} />
+              <h2 className={`font-black ${certificateReady ? 'text-white' : ''}`}>Final CyberNurdin Certificate</h2>
+            </div>
+            {certificateReady ? (
+              <>
+                <p className="mt-3 text-sm font-semibold leading-6 text-white/68">
+                  You&apos;ve completed every module in {path.title}. Submit your final reflection to request mentor evaluation and certificate issuance.
+                </p>
+                <Link href={`/learn/${path.slug}/lessons/${path.units[path.units.length - 1]?.modules[0]?.lessons[0]?.id ?? ''}`}>
+                  <Button className="mt-4 w-full">Request Final Review <Sparkles size={14} /></Button>
+                </Link>
+              </>
+            ) : (
+              <p className={`mt-3 text-sm font-semibold leading-6 ${certificateReady ? 'text-white/68' : 'text-[#061C36]/48'}`}>
+                Complete every module and pass mentor review to unlock your CyberNurdin certificate for {path.title}.
+              </p>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={16} className="text-[#F95738]" />
+            <h2 className="font-black">Guided Certification Pathways</h2>
+          </div>
+          <Link href="/dashboard/certifications" className="text-xs font-black text-[#F95738] hover:underline">View all</Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {guidedCertificationPathways.map((cert) => (
+            <Card key={cert.id} className="p-4">
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#F95738]">{cert.provider}</p>
+              <h3 className="mt-1.5 text-sm font-black leading-tight">{cert.title}</h3>
+              <p className="mt-2 line-clamp-3 text-xs font-semibold leading-5 text-[#061C36]/54">{cert.description}</p>
+              <Link href="/dashboard/certifications" className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[#0B3D77]">
+                View guide <ArrowRight size={12} />
+              </Link>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {comingSoonPaths.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4 flex items-center gap-2">
+            <Award size={16} className="text-[#061C36]/40" />
+            <h2 className="font-black">Coming Soon Tracks</h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {comingSoonPaths.map((item) => (
+              <Link key={item.id} href={`/paths/${item.slug}`} className="w-64 shrink-0">
+                <Card className="h-full p-4">
+                  <div className="flex items-center justify-between">
+                    <Badge>{item.category}</Badge>
+                    <Lock size={13} className="text-[#061C36]/28" />
+                  </div>
+                  <h3 className="mt-3 text-sm font-black leading-tight">{item.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-xs font-semibold leading-5 text-[#061C36]/50">{item.description}</p>
+                  <p className="mt-3 text-[10px] font-black uppercase tracking-wide text-[#F95738]">Coming Soon</p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function UnitsRoadmap() {
-  const { progress } = useApp();
+  const { progress, submissions } = useApp();
   const { path, currentLesson } = useActivePath();
 
   return (
@@ -275,6 +376,8 @@ function UnitsRoadmap() {
         const firstLesson = unit.modules.flatMap((m) => m.lessons)[0];
         const continueLessonId = currentLesson?.unitId === unit.id ? currentLesson.id : firstLesson?.id;
         const open = state !== 'locked';
+        const submission = firstLesson ? submissions.find((s) => s.lessonId === firstLesson.id) : undefined;
+        const displayStatus = getDisplayStatus(state, submission?.status);
 
         return (
           <Card key={unit.id} hoverEffect={open} className="overflow-hidden p-0">
@@ -288,7 +391,7 @@ function UnitsRoadmap() {
                 <p className="mt-1 text-sm font-semibold leading-6 text-[#061C36]/54">{unit.description}</p>
                 <div className="mt-3 flex items-center gap-3 text-xs font-black text-[#061C36]/40">
                   <StateIcon state={state} />
-                  <span className="capitalize">{state}</span>
+                  <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] uppercase ${displayStatusClasses(displayStatus)}`}>{displayStatus}</span>
                   <span>·</span>
                   <span>{unit.modules.length} modules</span>
                 </div>
@@ -353,7 +456,7 @@ export function MyPathPageView() {
 }
 
 export function LessonsPageView() {
-  const { progress } = useApp();
+  const { progress, submissions } = useApp();
   const { path, lessons, currentLesson } = useActivePath();
 
   return (
@@ -369,6 +472,8 @@ export function LessonsPageView() {
           const state = lessonProgress?.state || (index === 0 ? 'unlocked' : getUnitState(path, lesson.unit, progress) === 'locked' ? 'locked' : 'unlocked');
           const open = state !== 'locked';
           const isCurrent = lesson.id === currentLesson?.id;
+          const submission = submissions.find((s) => s.lessonId === lesson.id);
+          const displayStatus = getDisplayStatus(state, submission?.status);
 
           return (
             <Card key={lesson.id} hoverEffect={open} className={`p-5 ${isCurrent ? 'ring-2 ring-[#F95738]/30' : ''}`}>
@@ -382,13 +487,8 @@ export function LessonsPageView() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-black">{lesson.title}</h2>
-                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase ${
-                        state === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
-                        state === 'in-progress' ? 'border-[#F95738]/30 bg-[#F95738]/8 text-[#F95738]' :
-                        state === 'locked' ? 'border-[#061C36]/10 bg-[#061C36]/5 text-[#061C36]/36' :
-                        'border-[#061C36]/12 bg-[#FAF7F0] text-[#061C36]/48'
-                      }`}>
-                        {state}
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase ${displayStatusClasses(displayStatus)}`}>
+                        {displayStatus}
                       </span>
                       {isCurrent && <span className="inline-flex rounded-full border border-[#F95738]/30 bg-[#F95738]/8 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#F95738]">Current</span>}
                     </div>
@@ -546,7 +646,7 @@ export function SubmissionsPageView() {
           <Upload size={28} className="mx-auto mb-4 text-[#061C36]/24" />
           <p className="font-black">No submissions {filter !== 'all' ? `with status "${filter}"` : 'yet'}</p>
           <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/48">
-            Open a lesson and submit your evidence from the "Submit Evidence" tab.
+            Open a lesson and submit your evidence from the &quot;Submit Evidence&quot; tab.
           </p>
           {filter !== 'all' && (
             <button type="button" onClick={() => setFilter('all')} className="mt-4 text-sm font-black text-[#F95738] underline">
@@ -614,7 +714,7 @@ export function SubmissionsPageView() {
 }
 
 export function SessionsPageView() {
-  const { bookSession, bookings, user } = useApp();
+  const { bookSession, bookings } = useApp();
   const { path } = useActivePath();
   const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00 AM WAT');
@@ -630,7 +730,7 @@ export function SessionsPageView() {
 
   return (
     <div>
-      <PageTitle title="Sessions" body="Live mentorship, office hours, screen sharing, and recordings through BigBlueButton." />
+      <PageTitle title="Sessions" body="Request live mentorship, office hours, and review sessions. Your mentor will share a meeting link before each session." />
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <Card hoverEffect={false} className="overflow-hidden p-0">
           <div className="bg-[#061C36] p-6 text-white">
@@ -643,19 +743,22 @@ export function SessionsPageView() {
               <p className="font-black">{sessionLabel(nextSession)}</p>
               <p className="mt-1 text-xs font-black uppercase text-[#061C36]/40">Status: {getSessionStatus(nextSession)}</p>
             </div>
-            {nextSession?.bbbMeetingId ? (
-              <a href={`/api/bbb/join?meetingId=${encodeURIComponent(nextSession.bbbMeetingId)}&fullName=${encodeURIComponent(user?.fullName || 'CyberNurdin Mentee')}&role=attendee&userId=${encodeURIComponent(user?.id || 'mentee')}`}>
+            {nextSession?.attendeeJoinUrl ? (
+              <a href={nextSession.attendeeJoinUrl} target="_blank" rel="noopener noreferrer">
                 <Button className="w-full sm:w-auto">Join Session <Radio size={15} /></Button>
               </a>
             ) : (
-              <Button variant="secondary" disabled>BBB room pending</Button>
+              <Button variant="secondary" disabled>Meeting link pending</Button>
             )}
           </div>
+          {!nextSession?.attendeeJoinUrl && nextSession && (
+            <p className="px-6 pb-5 text-xs font-semibold text-[#061C36]/44">Your mentor will share the meeting link here before this session starts.</p>
+          )}
         </Card>
 
         <Card hoverEffect={false} className="p-5">
           <h2 className="font-black">Request a Session</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-[#061C36]/54">Submit a request and your mentor will attach a BigBlueButton room.</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-[#061C36]/54">Submit a request and your mentor will confirm a time and share a meeting link.</p>
           <form onSubmit={submit} className="mt-5 grid gap-3">
             <input className="cn-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             <select className="cn-input" value={time} onChange={(e) => setTime(e.target.value)}>
@@ -713,21 +816,72 @@ export function ProfileSettingsPageView(_props?: { settings?: boolean }) {
             <input className="cn-input" defaultValue={user?.email} disabled />
           </label>
           <label>
-            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#061C36]/58">Username</span>
-            <input className="cn-input" defaultValue={user?.username} />
-          </label>
-          <label>
-            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#061C36]/58">Access Coupon</span>
-            <input className="cn-input font-mono" defaultValue={user?.couponCode || 'Approved'} disabled />
+            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#061C36]/58">Role</span>
+            <input className="cn-input capitalize" defaultValue={user?.role} disabled />
           </label>
         </div>
         <div className="mt-5 rounded-lg border border-[#061C36]/8 bg-[#FAF7F0] p-4">
           <p className="text-[10px] font-black uppercase text-[#061C36]/40">Account Status</p>
           <p className="mt-2 text-sm font-semibold text-[#061C36]/62">
-            Status: <span className="font-black text-emerald-600 capitalize">{user?.status || 'approved'}</span>
+            Status: <span className="font-black text-emerald-600 capitalize">{user?.accessStatus || 'active'}</span>
           </p>
         </div>
       </Card>
+    </div>
+  );
+}
+
+export function CertificationsPageView() {
+  return (
+    <div>
+      <PageTitle
+        title="Guided Certification Pathways"
+        body="CyberNurdin guides you to official, publicly available cybersecurity certifications, then reviews your work when you return."
+      />
+      <div className="grid gap-5 lg:grid-cols-3">
+        {guidedCertificationPathways.map((cert) => (
+          <Card key={cert.id} hoverEffect={false} className="flex h-full flex-col overflow-hidden p-0">
+            <div className="bg-[#061C36] p-5 text-white">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={16} className="text-[#F5D35E]" />
+                <p className="text-[10px] font-black uppercase tracking-wide text-[#F5D35E]">{cert.provider}</p>
+              </div>
+              <h2 className="mt-2 text-lg font-black leading-tight">{cert.title}</h2>
+            </div>
+            <div className="flex flex-1 flex-col p-5">
+              <p className="text-sm font-semibold leading-6 text-[#061C36]/60">{cert.description}</p>
+
+              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/40">How to enroll</p>
+              <ol className="mt-2 space-y-2 text-sm font-semibold leading-6 text-[#061C36]/64">
+                {cert.enrollSteps.map((step, index) => (
+                  <li key={step} className="flex gap-2">
+                    <span className="mt-0.5 shrink-0 text-xs font-black text-[#F95738]">{index + 1}.</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="mt-4 rounded-lg border border-[#0B3D77]/14 bg-[#0B3D77]/5 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wide text-[#0B3D77]">Submit back to CyberNurdin</p>
+                <p className="mt-1.5 text-xs font-semibold leading-5 text-[#0B3D77]/90">{cert.submitBackInstructions}</p>
+              </div>
+
+              <p className="mt-4 text-[11px] font-semibold leading-5 text-[#061C36]/40">{cert.affiliationNote}</p>
+
+              <div className="mt-auto flex flex-col gap-2 pt-5">
+                <a href={cert.officialUrl} target="_blank" rel="noopener noreferrer">
+                  <Button variant="secondary" className="w-full">
+                    Visit {cert.officialUrlLabel} <ExternalLink size={13} />
+                  </Button>
+                </a>
+                <Link href="/dashboard/submissions">
+                  <Button className="w-full">Submit Proof <Upload size={14} /></Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
