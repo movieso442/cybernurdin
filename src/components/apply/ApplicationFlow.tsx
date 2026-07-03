@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Globe, Lock, LogIn, Mail, Phone, Send, User } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, Globe, LogIn, Mail, Phone, Send, User } from 'lucide-react';
 import { Button, Card, Input, Stepper } from '@/components/UI';
 import { ApplicationPayload, mentorshipPaths } from '@/lib/cybernurdin-data';
-import { ApplicationSubmissionResult, getLatestRegistrationResult } from '@/lib/cybernurdin-service';
+import { submitApplication } from '@/lib/actions/applications';
 import { useApp } from '@/context/AppContext';
 import { BrandLockup } from '@/components/public/PublicChrome';
 import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
@@ -24,7 +24,7 @@ const emptyApplication: ApplicationPayload = {
   deviceAccess: 'Reliable laptop and internet',
   priorTraining: '',
   portfolioUrl: '',
-  preferredPathId: mentorshipPaths[0].id,
+  preferredPathId: mentorshipPaths.find((path) => path.availability === 'available')?.id || mentorshipPaths[0].id,
   motivation: '',
   careerGoal: '',
   weeklyHours: '10-15',
@@ -68,13 +68,9 @@ function StepHeader({ title, body }: { title: string; body: string }) {
 function PersonalInfoStep({
   data,
   update,
-  confirmPassword,
-  updateConfirmPassword,
 }: {
   data: ApplicationPayload;
   update: (patch: Partial<ApplicationPayload>) => void;
-  confirmPassword: string;
-  updateConfirmPassword: (value: string) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -85,17 +81,15 @@ function PersonalInfoStep({
           <Input label="Last name" value={data.lastName} onChange={(event) => update({ lastName: event.target.value })} icon={<User size={15} />} required />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <Input label="Username" value={data.username} onChange={(event) => update({ username: event.target.value })} icon={<span className="text-xs font-black">@</span>} required />
           <Input label="Email" type="email" value={data.email} onChange={(event) => update({ email: event.target.value })} icon={<Mail size={15} />} required />
+          <Input label="Phone" value={data.phone} onChange={(event) => update({ phone: event.target.value })} icon={<Phone size={15} />} required />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <Input label="Phone" value={data.phone} onChange={(event) => update({ phone: event.target.value })} icon={<Phone size={15} />} required />
           <Input label="Country" value={data.country} onChange={(event) => update({ country: event.target.value })} icon={<Globe size={15} />} required />
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Input label="Password" type="password" value={data.password} onChange={(event) => update({ password: event.target.value })} icon={<Lock size={15} />} required />
-          <Input label="Confirm password" type="password" value={confirmPassword} onChange={(event) => updateConfirmPassword(event.target.value)} icon={<Lock size={15} />} required />
-        </div>
+        <p className="rounded-lg border border-[#0B3D77]/16 bg-[#0B3D77]/5 p-3 text-xs font-semibold leading-5 text-[#0B3D77]">
+          No password needed yet — you&apos;ll set one when you activate your access after your application is approved.
+        </p>
       </Card>
     </div>
   );
@@ -130,8 +124,13 @@ function BackgroundStep({ data, update }: { data: ApplicationPayload; update: (p
           <label>
             <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#061C36]/62">Preferred path</span>
             <select className="cn-input" value={data.preferredPathId} onChange={(event) => update({ preferredPathId: event.target.value })}>
-              {mentorshipPaths.map((path) => <option key={path.id} value={path.id}>{path.title}</option>)}
+              {mentorshipPaths.filter((path) => path.availability === 'available').map((path) => (
+                <option key={path.id} value={path.id}>{path.title}</option>
+              ))}
             </select>
+            <p className="mt-1.5 text-xs font-semibold text-[#061C36]/48">
+              Only Introduction to Cybersecurity is open for enrollment right now. Other paths are visible on the Courses page as upcoming mentorship tracks.
+            </p>
           </label>
         </div>
         <Input label="Prior training" value={data.priorTraining} onChange={(event) => update({ priorTraining: event.target.value })} />
@@ -204,7 +203,7 @@ function ReviewStep({ data }: { data: ApplicationPayload }) {
   );
 }
 
-function SuccessPanel({ result }: { result: ApplicationSubmissionResult | null }) {
+function SuccessPanel() {
   return (
     <div className="mx-auto grid max-w-xl place-items-center py-16 text-center">
       <Card hoverEffect={false} className="p-8">
@@ -213,22 +212,17 @@ function SuccessPanel({ result }: { result: ApplicationSubmissionResult | null }
         </div>
         <h1 className="mt-5 text-2xl font-black">Application Submitted</h1>
         <p className="mt-3 text-sm font-semibold leading-6 text-[#061C36]/64">
-          Your learner account is ready. Sign in with your email or username, password, and coupon code.
+          Thank you for applying. A CyberNurdin mentor will review your application. If approved, you&apos;ll receive
+          an activation code by email — use it on the Activate Access page to set your password and unlock your dashboard.
         </p>
-        {result && (
-          <div className="mt-5 rounded-lg border border-dashed border-[#F95738]/42 bg-[#F95738]/6 p-4 text-left">
-            <p className="text-[11px] font-black uppercase tracking-wide text-[#F95738]">Coupon code</p>
-            <p className="mt-2 break-all text-2xl font-black tracking-wide text-[#061C36]">{result.couponCode}</p>
-            <p className="mt-2 text-xs font-bold leading-5 text-[#061C36]/58">
-              {result.emailSent
-                ? `We queued this code for Firebase email delivery to ${result.email}.`
-                : `${result.emailMessage} Use this on-screen code for local testing.`}
-            </p>
-          </div>
-        )}
-        <Link href="/login" className="mt-6 block">
-          <Button>Go to Login</Button>
-        </Link>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link href="/activate-access">
+            <Button variant="secondary" className="w-full">Already have a code?</Button>
+          </Link>
+          <Link href="/login">
+            <Button className="w-full">Go to Login</Button>
+          </Link>
+        </div>
       </Card>
     </div>
   );
@@ -236,42 +230,46 @@ function SuccessPanel({ result }: { result: ApplicationSubmissionResult | null }
 
 export function ApplicationFlow({ initialStep = 0, successOnly = false }: { initialStep?: number; successOnly?: boolean }) {
   const router = useRouter();
-  const { applyForMentorship, triggerToast } = useApp();
+  const { triggerToast } = useApp();
   const [step, setStep] = useState(initialStep);
   const [data, setData] = useState<ApplicationPayload>(emptyApplication);
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitted, setSubmitted] = useState(successOnly);
-  const [registrationResult, setRegistrationResult] = useState<ApplicationSubmissionResult | null>(() => getLatestRegistrationResult());
+  const [submitting, setSubmitting] = useState(false);
   const steps = ['Personal', 'Background', 'Commitment', 'Review'];
-
-  useEffect(() => {
-    if (submitted && !registrationResult) {
-      setRegistrationResult(getLatestRegistrationResult());
-    }
-  }, [registrationResult, submitted]);
 
   const update = (patch: Partial<ApplicationPayload>) => setData((current) => ({ ...current, ...patch }));
 
   const stepView = useMemo(() => {
-    if (step === 0) return <PersonalInfoStep data={data} update={update} confirmPassword={confirmPassword} updateConfirmPassword={setConfirmPassword} />;
+    if (step === 0) return <PersonalInfoStep data={data} update={update} />;
     if (step === 1) return <BackgroundStep data={data} update={update} />;
     if (step === 2) return <MotivationStep data={data} update={update} />;
     return <ReviewStep data={data} />;
-  }, [confirmPassword, data, step]);
+  }, [data, step]);
 
   const submit = async () => {
-    if (data.password !== confirmPassword) {
-      triggerToast('Passwords do not match.', 'danger');
-      return;
-    }
     if (!data.commitmentAccepted) {
       triggerToast('Please accept the commitment checkbox before submitting.', 'danger');
       return;
     }
-    const result = await applyForMentorship(data);
-    setRegistrationResult(result);
-    setSubmitted(true);
-    router.replace('/apply/success');
+    setSubmitting(true);
+    try {
+      const result = await submitApplication({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        preferredPathId: data.preferredPathId,
+        motivation: data.motivation,
+      });
+      if (!result.ok) {
+        triggerToast(result.error, 'danger');
+        return;
+      }
+      setSubmitted(true);
+      router.replace('/apply/success');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -279,7 +277,7 @@ export function ApplicationFlow({ initialStep = 0, successOnly = false }: { init
       <ApplySidePanel />
       <section className="flex-1 p-5 md:p-8 lg:p-10">
         {submitted ? (
-          <SuccessPanel result={registrationResult} />
+          <SuccessPanel />
         ) : (
           <div className="mx-auto max-w-3xl">
             <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -303,10 +301,6 @@ export function ApplicationFlow({ initialStep = 0, successOnly = false }: { init
               className="mt-8"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (step === 0 && data.password !== confirmPassword) {
-                  triggerToast('Passwords do not match.', 'danger');
-                  return;
-                }
                 if (step < 3) setStep((value) => value + 1);
                 else submit();
               }}
@@ -314,8 +308,8 @@ export function ApplicationFlow({ initialStep = 0, successOnly = false }: { init
               {stepView}
               <div className="mt-6 flex justify-between gap-3 border-t border-[#061C36]/10 pt-5">
                 <Button type="button" variant="secondary" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>Back</Button>
-                <Button type="submit">
-                  {step === 3 ? 'Submit Application' : 'Save & Continue'}
+                <Button type="submit" disabled={submitting}>
+                  {step === 3 ? (submitting ? 'Submitting...' : 'Submit Application') : 'Save & Continue'}
                   {step === 3 ? <Send size={15} /> : <ArrowRight size={15} />}
                 </Button>
               </div>

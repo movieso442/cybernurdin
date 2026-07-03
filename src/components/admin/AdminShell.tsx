@@ -3,19 +3,21 @@
 import type React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   BookOpen,
   Calendar,
   ClipboardList,
   FileText,
   LayoutDashboard,
+  LogOut,
   Settings,
   Upload,
   Users,
 } from 'lucide-react';
 import { BrandLockup } from '@/components/public/PublicChrome';
 import { CyberNurdinLogoMark } from '@/components/shared/CyberNurdinLogo';
+import { createClient } from '@/lib/supabase/client';
 
 const adminNav: Array<{ href: string; label: string; icon?: LucideIcon; logo?: boolean }> = [
   { href: '/admin/overview', label: 'Overview', icon: LayoutDashboard },
@@ -28,12 +30,24 @@ const adminNav: Array<{ href: string; label: string; icon?: LucideIcon; logo?: b
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
+// Access to everything rendered here is already guaranteed by
+// src/app/admin/layout.tsx (a Server Component that checks the real
+// Supabase session + profiles.role === 'admin' before this ever renders).
+// This component only handles navigation chrome and sign-out.
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F2E9] text-[#061C36] lg:flex">
-      <aside className="border-r border-[#061C36]/8 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-72">
+      <aside className="flex flex-col border-r border-[#061C36]/8 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-72">
         <div className="border-b border-[#061C36]/8 p-5">
           <BrandLockup dark={false} />
           <div className="mt-4 rounded-lg bg-[#061C36] p-4 text-white">
@@ -41,7 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="mt-1 text-sm font-bold text-white/72">Mentorship operations</p>
           </div>
         </div>
-        <nav className="grid gap-1 p-3">
+        <nav className="grid flex-1 gap-1 p-3">
           {adminNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -63,6 +77,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="border-t border-[#061C36]/8 p-3">
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-[#061C36]/58 hover:bg-[#061C36]/5 hover:text-[#061C36]"
+          >
+            <LogOut size={17} />
+            Log out
+          </button>
+        </div>
       </aside>
       <main className="min-w-0 flex-1">
         <header className="border-b border-[#061C36]/8 bg-white/80 px-4 py-4 backdrop-blur lg:hidden">

@@ -3,9 +3,11 @@
 import type React from 'react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, BookOpen, Calendar, CheckCircle2, ClipboardList, ExternalLink, Plus, Radio, Upload, Users, X } from 'lucide-react';
-import { ApplicationRecord, Booking, EvidenceSubmission, MenteeUser, PathAssignment, SubmissionStatus, calculatePathProgress, getAllLessons, mentorshipPaths } from '@/lib/cybernurdin-data';
-import { getAllSubmissions, reviewSubmission } from '@/lib/cybernurdin-service';
+import { ArrowRight, Calendar, Check, CheckCircle2, ClipboardList, Copy, ExternalLink, Plus, Radio, Upload, Users, X } from 'lucide-react';
+import { Booking, calculatePathProgress, getAllLessons, getPathBySlug, mentorshipPaths } from '@/lib/cybernurdin-data';
+import { approveApplication, rejectApplication } from '@/lib/actions/applications';
+import { reviewSubmission } from '@/lib/actions/submissions';
+import { createClient } from '@/lib/supabase/client';
 import { Badge, Button, Card, ProgressBar } from '@/components/UI';
 
 const storagePrefix = 'cybernurdin_userflow_';
@@ -37,18 +39,109 @@ type AdminDraftUnit = {
   lessonCount: number;
 };
 
-function useAdminData() {
-  const [applications, setApplications] = useState<ApplicationRecord[]>([]);
-  const [mentees, setMentees] = useState<MenteeUser[]>([]);
+// Real rows as returned by `supabase.from(...).select()` — snake_case,
+// admin-only reads protected by the "is_admin()" RLS policies.
+export type ApplicationRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  selected_path: string;
+  motivation: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: string | null;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+};
+
+export type ProfileRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  access_status: string;
+  selected_path: string | null;
+  created_at: string;
+};
+
+export type SubmissionRow = {
+  id: string;
+  user_id: string;
+  path_id: string;
+  module_id: string;
+  type: string;
+  text_response: string | null;
+  file_url: string | null;
+  status: 'pending' | 'under-review' | 'approved' | 'rejected';
+  mentor_feedback: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
+function useAdminApplications() {
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase.from('applications').select('*').order('created_at', { ascending: false });
+    setApplications((data as ApplicationRow[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  return { applications, loading, reload };
+}
+
+function useAdminSubmissions() {
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase.from('submissions').select('*').order('submitted_at', { ascending: false });
+    setSubmissions((data as SubmissionRow[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  return { submissions, loading, reload };
+}
+
+function useAdminMentees() {
+  const [mentees, setMentees] = useState<ProfileRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from('profiles').select('*').eq('role', 'mentee').order('created_at', { ascending: false });
+      setMentees((data as ProfileRow[]) || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  return { mentees, loading };
+}
+
+function useAdminSessions() {
   const [sessions, setSessions] = useState<Booking[]>([]);
 
   useEffect(() => {
-    setApplications(readLocal<ApplicationRecord[]>('applications', []));
-    setMentees(readLocal<MenteeUser[]>('users', []));
     setSessions(readLocal<Booking[]>('sessions', readLocal<Booking[]>('bookings', [])));
   }, []);
 
-  return { applications, mentees, sessions, setMentees, setSessions };
+  return { sessions, setSessions };
 }
 
 function PageTitle({
@@ -81,11 +174,14 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 }
 
 export function AdminOverviewPage() {
-  const { applications, mentees, sessions } = useAdminData();
+  const { applications, loading: loadingApplications } = useAdminApplications();
+  const { submissions, loading: loadingSubmissions } = useAdminSubmissions();
+  const { sessions } = useAdminSessions();
+
   const pendingApplications = applications.filter((item) => item.status === 'pending').length;
-  const activeMentees = mentees.filter((item) => item.status === 'approved').length;
+  const pendingSubmissions = submissions.filter((item) => item.status === 'pending' || item.status === 'under-review').length;
   const upcomingSessions = sessions.filter((item) => item.status === 'scheduled' || item.status === 'live').length;
-  const needsAttention = mentees.filter((item) => !item.activePathId).slice(0, 3);
+  const recentApplications = applications.filter((item) => item.status === 'pending').slice(0, 3);
 
   return (
     <div>
@@ -95,17 +191,16 @@ export function AdminOverviewPage() {
         action={<Link href="/admin/applications"><Button>Review Applications <ArrowRight size={15} /></Button></Link>}
       />
       <div className="grid gap-4 md:grid-cols-3">
-        {[
-          ['Pending applications', pendingApplications, ClipboardList],
-          ['Active mentees', activeMentees, Users],
+        {([
+          ['Pending applications', loadingApplications ? '—' : pendingApplications, ClipboardList],
+          ['Submissions to review', loadingSubmissions ? '—' : pendingSubmissions, Upload],
           ['Upcoming sessions', upcomingSessions, Calendar],
-        ].map(([label, value, Icon]) => {
-          const StatIcon = Icon as typeof ClipboardList;
+        ] as [string, string | number, typeof ClipboardList][]).map(([label, value, StatIcon]) => {
           return (
-            <Card key={label as string} hoverEffect={false} className="p-5">
+            <Card key={label} hoverEffect={false} className="p-5">
               <StatIcon className="text-[#F95738]" size={22} />
-              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">{label as string}</p>
-              <p className="mt-1 text-3xl font-black">{value as number}</p>
+              <p className="mt-4 text-[10px] font-black uppercase tracking-wide text-[#061C36]/42">{label}</p>
+              <p className="mt-1 text-3xl font-black">{value}</p>
             </Card>
           );
         })}
@@ -113,21 +208,21 @@ export function AdminOverviewPage() {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_360px]">
         <Card hoverEffect={false} className="p-6">
-          <h2 className="text-xl font-black">Mentees Needing Attention</h2>
+          <h2 className="text-xl font-black">Applications Needing Review</h2>
           <div className="mt-4 space-y-3">
-            {needsAttention.length ? needsAttention.map((mentee) => (
-              <div key={mentee.id} className="flex items-center justify-between rounded-lg bg-[#FAF7F0] p-4 text-sm font-bold">
-                <span>{mentee.fullName}</span>
-                <Badge>Assign path</Badge>
+            {recentApplications.length ? recentApplications.map((application) => (
+              <div key={application.id} className="flex items-center justify-between rounded-lg bg-[#FAF7F0] p-4 text-sm font-bold">
+                <span>{application.full_name}</span>
+                <Badge>Pending</Badge>
               </div>
-            )) : <EmptyState title="Nothing urgent" body="No mentee needs an immediate path or access action." />}
+            )) : <EmptyState title="Nothing urgent" body="No applications are waiting for review." />}
           </div>
         </Card>
         <Card hoverEffect={false} className="p-6">
           <h2 className="text-xl font-black">Quick Actions</h2>
           <div className="mt-4 grid gap-3">
             <Link href="/admin/applications"><Button className="w-full justify-between">Review Applications <ArrowRight size={15} /></Button></Link>
-            <Link href="/admin/mentees"><Button className="w-full justify-between" variant="secondary">Assign Path <ArrowRight size={15} /></Button></Link>
+            <Link href="/admin/submissions"><Button className="w-full justify-between" variant="secondary">Review Submissions <ArrowRight size={15} /></Button></Link>
             <Link href="/admin/sessions"><Button className="w-full justify-between" variant="secondary">Create Session <ArrowRight size={15} /></Button></Link>
             <Link href="/admin/content"><Button className="w-full justify-between" variant="secondary">Add Lesson <ArrowRight size={15} /></Button></Link>
           </div>
@@ -138,29 +233,67 @@ export function AdminOverviewPage() {
 }
 
 export function AdminApplicationsPage() {
-  const { applications } = useAdminData();
+  const { applications, loading, reload } = useAdminApplications();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = applications.find((item) => item.id === selectedId) || applications[0];
+  const [processing, setProcessing] = useState(false);
+  const [adminNote, setAdminNote] = useState('');
+  const [revealedCoupon, setRevealedCoupon] = useState<{ applicationId: string; code: string; emailSent: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const selected = applications.find((item) => item.id === selectedId) || applications.find((item) => item.status === 'pending') || applications[0];
+
+  const handleApprove = async () => {
+    if (!selected) return;
+    setProcessing(true);
+    try {
+      const result = await approveApplication(selected.id);
+      setRevealedCoupon({ applicationId: selected.id, code: result.couponCode, emailSent: result.emailSent });
+      await reload();
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selected) return;
+    setProcessing(true);
+    try {
+      await rejectApplication(selected.id, adminNote);
+      setAdminNote('');
+      await reload();
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const copyCoupon = async () => {
+    if (!revealedCoupon) return;
+    await navigator.clipboard.writeText(revealedCoupon.code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div>
-      <PageTitle title="Applications" body="Review applicants, assign one cybersecurity path, and generate access." />
+      <PageTitle title="Applications" body="Review applicants and generate mentorship access on approval." />
       <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
         <Card hoverEffect={false} className="p-6">
           <h2 className="text-xl font-black">Applicants</h2>
           <div className="mt-4 divide-y divide-[#061C36]/8">
-            {applications.length ? applications.map((application) => (
+            {loading ? (
+              <p className="py-6 text-sm font-semibold text-[#061C36]/48">Loading applications...</p>
+            ) : applications.length ? applications.map((application) => (
               <button
                 key={application.id}
                 type="button"
-                onClick={() => setSelectedId(application.id)}
-                className="grid w-full gap-2 py-4 text-left md:grid-cols-[1fr_160px_100px] md:items-center"
+                onClick={() => { setSelectedId(application.id); setRevealedCoupon(null); }}
+                className={`grid w-full gap-2 py-4 text-left md:grid-cols-[1fr_160px_100px] md:items-center ${selected?.id === application.id ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
               >
                 <div>
-                  <p className="font-black">{application.firstName} {application.lastName}</p>
+                  <p className="font-black">{application.full_name}</p>
                   <p className="text-sm font-semibold text-[#061C36]/54">{application.email}</p>
                 </div>
-                <p className="text-sm font-bold text-[#061C36]/60">{mentorshipPaths.find((path) => path.id === application.preferredPathId)?.title || 'Path pending'}</p>
+                <p className="text-sm font-bold text-[#061C36]/60">{getPathBySlug(application.selected_path)?.title || application.selected_path}</p>
                 <Badge>{application.status}</Badge>
               </button>
             )) : <EmptyState title="No applications yet" body="New mentorship applications will appear here." />}
@@ -172,22 +305,51 @@ export function AdminApplicationsPage() {
           {selected ? (
             <div className="mt-4 space-y-4">
               <div>
-                <p className="font-black">{selected.firstName} {selected.lastName}</p>
-                <p className="text-sm font-semibold text-[#061C36]/58">{selected.country} · {selected.experienceLevel}</p>
+                <p className="font-black">{selected.full_name}</p>
+                <p className="text-sm font-semibold text-[#061C36]/58">{selected.email}{selected.phone ? ` · ${selected.phone}` : ''}</p>
               </div>
               <div className="rounded-lg bg-[#FAF7F0] p-4">
-                <p className="text-[10px] font-black uppercase text-[#061C36]/42">Motivation</p>
+                <p className="text-[10px] font-black uppercase text-[#061C36]/42">Preferred path</p>
+                <p className="mt-1 text-sm font-bold">{getPathBySlug(selected.selected_path)?.title || selected.selected_path}</p>
+                <p className="mt-3 text-[10px] font-black uppercase text-[#061C36]/42">Motivation</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/66">{selected.motivation || 'No motivation text provided.'}</p>
               </div>
-              <select className="cn-input" defaultValue={selected.preferredPathId}>
-                {mentorshipPaths.map((path) => <option key={path.id} value={path.id}>{path.title}</option>)}
-              </select>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button>Approve</Button>
-                <Button variant="secondary">Reject</Button>
-              </div>
-              <Button className="w-full" variant="secondary">Generate Coupon</Button>
-              <Button className="w-full" variant="secondary">Create Intro BBB Session</Button>
+
+              {revealedCoupon?.applicationId === selected.id ? (
+                <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                    Coupon generated — shown once, copy it now
+                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="break-all text-lg font-black tracking-wide text-[#061C36]">{revealedCoupon.code}</p>
+                    <button type="button" onClick={copyCoupon} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow">
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs font-bold leading-5 text-emerald-800">
+                    {revealedCoupon.emailSent
+                      ? `Emailed to ${selected.email}.`
+                      : 'No email provider configured — copy this code and share it with the applicant manually.'}
+                  </p>
+                </div>
+              ) : selected.status === 'pending' ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Button disabled={processing} onClick={handleApprove}>{processing ? 'Working...' : 'Approve & Generate Coupon'}</Button>
+                    <Button variant="secondary" disabled={processing} onClick={handleReject}>Reject</Button>
+                  </div>
+                  <textarea
+                    className="cn-input min-h-[70px]"
+                    placeholder="Optional note if rejecting..."
+                    value={adminNote}
+                    onChange={(event) => setAdminNote(event.target.value)}
+                  />
+                </>
+              ) : (
+                <div className={`rounded-lg p-3 text-sm font-bold ${selected.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  Already {selected.status}{selected.admin_note ? ` — ${selected.admin_note}` : ''}
+                </div>
+              )}
             </div>
           ) : <EmptyState title="Select an applicant" body="Choose an application to review details." />}
         </Card>
@@ -197,67 +359,32 @@ export function AdminApplicationsPage() {
 }
 
 export function AdminMenteesPage() {
-  const { mentees, setMentees } = useAdminData();
-  const [selectedPaths, setSelectedPaths] = useState<Record<string, string>>({});
-
-  const assignPath = (mentee: MenteeUser, pathId: string) => {
-    const users = readLocal<MenteeUser[]>('users', []);
-    const nextUsers = users.map((item) =>
-      item.id === mentee.id ? { ...item, activePathId: pathId, status: 'approved' as const } : item,
-    );
-    const assignments = readLocal<PathAssignment[]>('pathAssignments', []);
-    const pausedAssignments = assignments.map((assignment) =>
-      assignment.userId === mentee.id && assignment.status === 'active'
-        ? { ...assignment, status: 'paused' as const }
-        : assignment,
-    );
-    const activeAssignment: PathAssignment = {
-      id: `assignment-${mentee.id}-${pathId}`,
-      userId: mentee.id,
-      pathId,
-      status: 'active',
-      assignedBy: 'admin',
-      assignedAt: new Date().toISOString(),
-      progressPercent: 0,
-    };
-
-    writeLocal('users', nextUsers);
-    writeLocal('pathAssignments', [
-      activeAssignment,
-      ...pausedAssignments.filter((assignment) => assignment.id !== activeAssignment.id),
-    ]);
-    setMentees(nextUsers);
-  };
+  const { mentees, loading } = useAdminMentees();
 
   return (
     <div>
-      <PageTitle title="Mentees" body="Minimal status view for active learners." action={<Button><Plus size={15} />Assign Path</Button>} />
+      <PageTitle title="Mentees" body="Active learner accounts and their assigned mentorship path." />
       <Card hoverEffect={false} className="p-6">
+        {loading ? (
+          <p className="py-6 text-sm font-semibold text-[#061C36]/48">Loading mentees...</p>
+        ) : (
         <div className="divide-y divide-[#061C36]/8">
           {mentees.length ? mentees.map((mentee) => {
-            const path = mentorshipPaths.find((item) => item.id === mentee.activePathId) || mentorshipPaths[0];
+            const path = getPathBySlug(mentee.selected_path || '') || mentorshipPaths[0];
             return (
-              <div key={mentee.id} className="grid gap-3 py-4 md:grid-cols-[1fr_220px_160px_240px] md:items-center">
+              <div key={mentee.id} className="grid gap-3 py-4 md:grid-cols-[1fr_220px_160px_120px] md:items-center">
                 <div>
-                  <p className="font-black">{mentee.fullName}</p>
+                  <p className="font-black">{mentee.full_name}</p>
                   <p className="text-sm font-semibold text-[#061C36]/54">{mentee.email}</p>
                 </div>
                 <p className="text-sm font-bold">{path.title}</p>
                 <div><ProgressBar value={calculatePathProgress(path, null)} /></div>
-                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                  <select
-                    className="cn-input min-h-10 py-2 text-sm"
-                    value={selectedPaths[mentee.id] || path.id}
-                    onChange={(event) => setSelectedPaths((current) => ({ ...current, [mentee.id]: event.target.value }))}
-                  >
-                    {mentorshipPaths.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-                  </select>
-                  <Button variant="secondary" onClick={() => assignPath(mentee, selectedPaths[mentee.id] || path.id)}>Assign</Button>
-                </div>
+                <Badge>{mentee.access_status}</Badge>
               </div>
             );
-          }) : <EmptyState title="No mentees yet" body="Approved applicants will become mentees here." />}
+          }) : <EmptyState title="No mentees yet" body="Activated mentees will appear here." />}
         </div>
+        )}
       </Card>
     </div>
   );
@@ -409,44 +536,44 @@ export function AdminContentPage() {
 }
 
 export function AdminSessionsPage() {
-  const { sessions } = useAdminData();
+  const { sessions, setSessions } = useAdminSessions();
   const [title, setTitle] = useState('CyberNurdin Office Hours');
+  const [meetingUrl, setMeetingUrl] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const createSession = async (event: FormEvent) => {
+  const createSession = (event: FormEvent) => {
     event.preventDefault();
-    setLoading(true);
-    setMessage('');
-    try {
-      const response = await fetch('/api/bbb/create-meeting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description: 'Live CyberNurdin mentorship session',
-          duration: 60,
-          status: 'scheduled',
-        }),
-      });
-      const data = await response.json();
-      setMessage(data.ok ? 'BBB session created and saved.' : data.error || 'Could not create BBB session.');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not create BBB session.');
-    } finally {
-      setLoading(false);
-    }
+    const created: Booking = {
+      id: `session-${Date.now()}`,
+      userId: '',
+      pathId: '',
+      mentorName: 'CyberNurdin Mentor',
+      topic: title,
+      title,
+      date: '',
+      time: '',
+      status: 'scheduled',
+      attendeeJoinUrl: meetingUrl.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    };
+    const next = [created, ...sessions];
+    setSessions(next);
+    writeLocal('sessions', next);
+    setMessage('Session saved. Share this from the mentee\'s Sessions page.');
+    setTitle('CyberNurdin Office Hours');
+    setMeetingUrl('');
   };
 
   return (
     <div>
-      <PageTitle title="Sessions" body="Create and manage BigBlueButton mentorship sessions." />
+      <PageTitle title="Sessions" body="Create mentorship sessions and attach an external meeting link (Zoom, Google Meet, etc.)." />
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
         <Card hoverEffect={false} className="p-6">
-          <h2 className="text-xl font-black">Create BBB Session</h2>
+          <h2 className="text-xl font-black">Create Session</h2>
           <form onSubmit={createSession} className="mt-5 grid gap-3">
-            <input className="cn-input" value={title} onChange={(event) => setTitle(event.target.value)} required />
-            <Button disabled={loading}>{loading ? 'Creating...' : 'Create BBB Session'} <Radio size={15} /></Button>
+            <input className="cn-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Session title" required />
+            <input className="cn-input" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="External meeting link (optional)" type="url" />
+            <Button><Radio size={15} /> Save Session</Button>
           </form>
           {message && <p className="mt-4 rounded-lg bg-[#FAF7F0] p-3 text-sm font-bold text-[#061C36]/62">{message}</p>}
         </Card>
@@ -461,11 +588,11 @@ export function AdminSessionsPage() {
                 </div>
                 <Badge>{session.status}</Badge>
                 <div className="flex gap-2">
-                  {session.bbbMeetingId ? <a href={`/api/bbb/join?meetingId=${session.bbbMeetingId}&fullName=CyberNurdin%20Mentor&role=moderator`}><Button variant="secondary">Moderator</Button></a> : <Button variant="secondary" disabled>No BBB</Button>}
+                  {session.attendeeJoinUrl ? <a href={session.attendeeJoinUrl} target="_blank" rel="noopener noreferrer"><Button variant="secondary">Open Link</Button></a> : <Button variant="secondary" disabled>No link yet</Button>}
                   <Button variant="ghost">End</Button>
                 </div>
               </div>
-            )) : <EmptyState title="No sessions yet" body="Create a BBB session or wait for mentee requests." />}
+            )) : <EmptyState title="No sessions yet" body="Create a session or wait for mentee requests." />}
           </div>
         </Card>
       </div>
@@ -473,17 +600,15 @@ export function AdminSessionsPage() {
   );
 }
 
+type SubmissionFilter = 'all' | SubmissionRow['status'];
+
 export function AdminSubmissionsPage() {
-  const [allSubmissions, setAllSubmissions] = useState<EvidenceSubmission[]>([]);
-  const [filter, setFilter] = useState<'all' | SubmissionStatus>('all');
-  const [selected, setSelected] = useState<EvidenceSubmission | null>(null);
+  const { submissions: allSubmissions, loading: loadingList, reload } = useAdminSubmissions();
+  const [filter, setFilter] = useState<SubmissionFilter>('all');
+  const [selected, setSelected] = useState<SubmissionRow | null>(null);
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    setAllSubmissions(getAllSubmissions());
-  }, []);
 
   const filtered = filter === 'all' ? allSubmissions : allSubmissions.filter((s) => s.status === filter);
 
@@ -495,7 +620,7 @@ export function AdminSubmissionsPage() {
     rejected: allSubmissions.filter((s) => s.status === 'rejected').length,
   };
 
-  const filters: { key: 'all' | SubmissionStatus; label: string }[] = [
+  const filters: { key: SubmissionFilter; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'pending', label: 'Pending' },
     { key: 'under-review', label: 'Under Review' },
@@ -503,7 +628,7 @@ export function AdminSubmissionsPage() {
     { key: 'rejected', label: 'Rejected' },
   ];
 
-  function statusStyle(status: SubmissionStatus) {
+  function statusStyle(status: SubmissionRow['status']) {
     switch (status) {
       case 'approved': return 'border-emerald-200 bg-emerald-50 text-emerald-700';
       case 'rejected': return 'border-red-200 bg-red-50 text-red-700';
@@ -512,17 +637,15 @@ export function AdminSubmissionsPage() {
     }
   }
 
-  async function handleReview(status: SubmissionStatus) {
+  async function handleReview(status: 'approved' | 'rejected' | 'under-review') {
     if (!selected) return;
     setLoading(true);
     setMessage('');
     try {
-      const updated = await reviewSubmission(selected.id, status, feedback, 'admin');
-      if (updated) {
-        setAllSubmissions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
-        setSelected(updated);
-        setMessage(status === 'approved' ? 'Submission approved and student notified.' : 'Submission rejected with feedback.');
-      }
+      await reviewSubmission(selected.id, status, feedback);
+      await reload();
+      setSelected((current) => (current ? { ...current, status, mentor_feedback: feedback || null } : current));
+      setMessage(status === 'approved' ? 'Submission approved — next module unlocked.' : status === 'rejected' ? 'Submission rejected with feedback.' : 'Marked under review.');
     } finally {
       setLoading(false);
     }
@@ -553,7 +676,9 @@ export function AdminSubmissionsPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
         <Card hoverEffect={false} className="p-5">
-          {filtered.length === 0 ? (
+          {loadingList ? (
+            <p className="py-6 text-sm font-semibold text-[#061C36]/48">Loading submissions...</p>
+          ) : filtered.length === 0 ? (
             <EmptyState title="No submissions" body={filter === 'all' ? 'No evidence submissions yet.' : `No submissions with status "${filter}".`} />
           ) : (
             <div className="divide-y divide-[#061C36]/8">
@@ -561,17 +686,17 @@ export function AdminSubmissionsPage() {
                 <button
                   key={sub.id}
                   type="button"
-                  onClick={() => { setSelected(sub); setFeedback(sub.mentorFeedback || ''); setMessage(''); }}
+                  onClick={() => { setSelected(sub); setFeedback(sub.mentor_feedback || ''); setMessage(''); }}
                   className={`grid w-full gap-2 py-4 text-left md:grid-cols-[1fr_140px_100px] md:items-center ${selected?.id === sub.id ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
                 >
                   <div>
-                    <p className="font-black">{sub.userId}</p>
-                    <p className="text-sm font-semibold text-[#061C36]/54">Lesson: {sub.lessonId}</p>
+                    <p className="font-black">{sub.user_id.slice(0, 8)}…</p>
+                    <p className="text-sm font-semibold text-[#061C36]/54">Module: {getPathBySlug(sub.path_id)?.units.find((u) => u.id === sub.module_id)?.title || sub.module_id}</p>
                     <p className="mt-1 text-xs font-bold text-[#061C36]/40">
-                      {sub.evidenceType.replace('-', ' ')} · {sub.submittedAt.slice(0, 10)}
+                      {sub.type.replace('-', ' ')} · {sub.submitted_at.slice(0, 10)}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-[#061C36]/52 truncate">{sub.evidenceUrl ? 'Evidence uploaded' : 'No URL'}</p>
+                  <p className="text-sm font-bold text-[#061C36]/52 truncate">{sub.file_url ? 'Evidence uploaded' : 'No URL'}</p>
                   <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase ${statusStyle(sub.status)}`}>
                     {sub.status}
                   </span>
@@ -586,25 +711,25 @@ export function AdminSubmissionsPage() {
           {selected ? (
             <div className="mt-4 space-y-4">
               <div className="rounded-lg border border-[#061C36]/8 bg-[#FAF7F0] p-4">
-                <p className="text-[10px] font-black uppercase text-[#061C36]/40">Student</p>
-                <p className="mt-1 font-black">{selected.userId}</p>
-                <p className="mt-3 text-[10px] font-black uppercase text-[#061C36]/40">Lesson</p>
-                <p className="mt-1 text-sm font-bold">{selected.lessonId}</p>
+                <p className="text-[10px] font-black uppercase text-[#061C36]/40">Student ID</p>
+                <p className="mt-1 font-black">{selected.user_id}</p>
+                <p className="mt-3 text-[10px] font-black uppercase text-[#061C36]/40">Module</p>
+                <p className="mt-1 text-sm font-bold">{getPathBySlug(selected.path_id)?.units.find((u) => u.id === selected.module_id)?.title || selected.module_id}</p>
                 <p className="mt-3 text-[10px] font-black uppercase text-[#061C36]/40">Type</p>
-                <p className="mt-1 text-sm font-bold capitalize">{selected.evidenceType.replace('-', ' ')}</p>
+                <p className="mt-1 text-sm font-bold capitalize">{selected.type.replace('-', ' ')}</p>
                 <p className="mt-3 text-[10px] font-black uppercase text-[#061C36]/40">Submitted</p>
-                <p className="mt-1 text-sm font-bold">{selected.submittedAt.slice(0, 10)}</p>
+                <p className="mt-1 text-sm font-bold">{selected.submitted_at.slice(0, 10)}</p>
               </div>
 
-              {selected.notes && (
+              {selected.text_response && (
                 <div>
                   <p className="text-[10px] font-black uppercase text-[#061C36]/40">Student Reflection</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">{selected.notes}</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">{selected.text_response}</p>
                 </div>
               )}
 
-              {selected.evidenceUrl && (
-                <a href={selected.evidenceUrl} target="_blank" rel="noopener noreferrer">
+              {selected.file_url && (
+                <a href={selected.file_url} target="_blank" rel="noopener noreferrer">
                   <Button variant="secondary" className="w-full">
                     View Evidence <ExternalLink size={14} />
                   </Button>

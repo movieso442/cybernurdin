@@ -1,64 +1,55 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  ApplicationPayload,
   Booking,
   EvidenceSubmission,
   EvidenceType,
-  MenteeUser,
-  PathAssignment,
   ProgressRecord,
-  getLessonContext,
-  getPathById,
-  mentorshipPaths,
+  getPathBySlug,
 } from '@/lib/cybernurdin-data';
-import {
-  ApplicationSubmissionResult,
-  clearStoredUser,
-  createBooking as createBookingRecord,
-  createSubmission,
-  ensureLocalSeed,
-  getBookings,
-  getProgress,
-  getStoredUser,
-  getSubmissions,
-  loginWithAccess,
-  saveQuizAttempt,
-  submitApplication,
-  updateLessonProgress,
-} from '@/lib/cybernurdin-service';
+import { createClient } from '@/lib/supabase/client';
+import { adaptSubmissions, buildProgressRecord, CourseProgressRow, EnrollmentRow, SubmissionRow } from '@/lib/progress-adapter';
+import { createSubmission as createSubmissionAction } from '@/lib/actions/submissions';
+
+const DEFAULT_PATH_SLUG = 'introduction-to-cybersecurity';
+
+export type SessionUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  accessStatus: string;
+  selectedPath: string | null;
+  /** Convenience alias for selectedPath, kept for existing call sites. */
+  activePathId: string;
+};
 
 type Toast = { message: string; type: 'success' | 'danger' | 'info' } | null;
 
 type AppContextType = {
-  user: MenteeUser | null;
+  user: SessionUser | null;
   isLoadingUser: boolean;
-  paths: typeof mentorshipPaths;
   progress: ProgressRecord | null;
-  bookings: Booking[];
-  assignments: PathAssignment[];
   submissions: EvidenceSubmission[];
+  bookings: Booking[];
   toast: Toast;
   triggerToast: (message: string, type?: 'success' | 'danger' | 'info') => void;
-  applyForMentorship: (payload: ApplicationPayload) => Promise<ApplicationSubmissionResult>;
-  login: (identifier: string, password: string, couponCode: string) => Promise<MenteeUser>;
-  logout: () => void;
-  refreshProgress: () => void;
-  updateProgress: (lessonId: string, update: Parameters<typeof updateLessonProgress>[3]) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshProgress: () => Promise<void>;
+  updateProgress: (lessonId: string, update: Partial<{ videoCompleted: boolean; slidesCompleted: boolean; quizPassed: boolean; state: string; score: number }>) => Promise<void>;
   gradeQuiz: (lessonId: string, quizId: string, score: number, passed: boolean, answers: Record<string, number>) => Promise<void>;
   bookSession: (payload: { topic: string; date: string; time: string; mentorName: string }) => Promise<void>;
-  submitEvidence: (payload: { lessonId: string; unitId: string; moduleId: string; evidenceUrl: string; evidenceType: EvidenceType; notes: string }) => Promise<EvidenceSubmission>;
+  submitEvidence: (payload: { lessonId: string; unitId: string; moduleId: string; evidenceUrl: string; evidenceType: EvidenceType; notes: string }) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<MenteeUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [progress, setProgress] = useState<ProgressRecord | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [assignments, setAssignments] = useState<PathAssignment[]>([]);
   const [submissions, setSubmissions] = useState<EvidenceSubmission[]>([]);
   const [toast, setToast] = useState<Toast>(null);
 
@@ -67,98 +58,122 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => setToast(null), 3600);
   };
 
-  useEffect(() => {
-    ensureLocalSeed();
-    const storedUser = getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-      setProgress(getProgress(storedUser.id, storedUser.activePathId));
-      setBookings(getBookings(storedUser.id));
-      setSubmissions(getSubmissions(storedUser.id));
+  const loadSessionData = useCallback(async (authUserId: string) => {
+    const supabase = createClient();
+
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUserId).single();
+    if (!profile) {
+      setUser(null);
+      setProgress(null);
+      setSubmissions([]);
+      return;
     }
-    setIsLoadingUser(false);
+
+    const selectedPath = profile.selected_path || DEFAULT_PATH_SLUG;
+    setUser({
+      id: profile.id,
+      fullName: profile.full_name,
+      email: profile.email,
+      role: profile.role,
+      accessStatus: profile.access_status,
+      selectedPath: profile.selected_path,
+      activePathId: selectedPath,
+    });
+
+    const path = getPathBySlug(selectedPath);
+    if (!path) return;
+
+    const [{ data: enrollment }, { data: progressRows }, { data: submissionRows }] = await Promise.all([
+      supabase.from('enrollments').select('*').eq('user_id', authUserId).eq('path_id', selectedPath).maybeSingle(),
+      supabase.from('course_progress').select('*').eq('user_id', authUserId).eq('path_id', selectedPath),
+      supabase.from('submissions').select('*').eq('user_id', authUserId).eq('path_id', selectedPath),
+    ]);
+
+    setProgress(buildProgressRecord(path, (enrollment as EnrollmentRow) || null, (progressRows as CourseProgressRow[]) || []));
+    setSubmissions(adaptSubmissions(path, (submissionRows as SubmissionRow[]) || []));
   }, []);
 
-  const refreshProgress = () => {
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+      if (authUser) {
+        loadSessionData(authUser.id).finally(() => setIsLoadingUser(false));
+      } else {
+        setIsLoadingUser(false);
+      }
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadSessionData(session.user.id);
+      } else {
+        setUser(null);
+        setProgress(null);
+        setSubmissions([]);
+      }
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, [loadSessionData]);
+
+  const refreshProgress = async () => {
     if (!user) return;
-    setProgress(getProgress(user.id, user.activePathId));
-    setBookings(getBookings(user.id));
-    setSubmissions(getSubmissions(user.id));
+    await loadSessionData(user.id);
   };
 
-  const applyForMentorship = async (payload: ApplicationPayload) => {
-    const result = await submitApplication(payload);
-    triggerToast(
-      result.emailSent
-        ? 'Account created. Coupon email queued through Firebase.'
-        : 'Account created. Coupon code is shown on the success screen.',
-      result.emailSent ? 'success' : 'info',
-    );
-    return result;
+  const login = async (email: string, password: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      throw new Error(error?.message === 'Invalid login credentials' ? 'Incorrect email or password.' : 'Could not sign in. Please try again.');
+    }
+    await loadSessionData(data.user.id);
+    triggerToast('Welcome back to your mentorship dashboard.', 'success');
   };
 
-  const login = async (identifier: string, password: string, couponCode: string) => {
-    const result = await loginWithAccess(identifier, password, couponCode);
-    setUser(result.user);
-    setProgress(result.progress);
-    setAssignments(result.assignments);
-    setBookings(getBookings(result.user.id));
-    setSubmissions(getSubmissions(result.user.id));
-    triggerToast('Access verified. Welcome to your mentorship dashboard.', 'success');
-    return result.user;
-  };
-
-  const logout = () => {
-    clearStoredUser();
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     setUser(null);
     setProgress(null);
-    setAssignments([]);
-    setBookings([]);
     setSubmissions([]);
-    triggerToast('Secure session ended.', 'info');
+    triggerToast('You have been signed out.', 'info');
   };
 
-  const updateProgress = async (lessonId: string, update: Parameters<typeof updateLessonProgress>[3]) => {
-    if (!user) return;
-    const next = await updateLessonProgress(user.id, user.activePathId, lessonId, update);
-    setProgress(next);
-  };
-
-  const gradeQuiz = async (
+  // Video/slides/quiz completion is in-session UI state only — it is not
+  // persisted. Only evidence submissions and mentor approval are saved
+  // (see submitEvidence below and the reviewSubmission Server Action).
+  const updateProgress = async (
     lessonId: string,
-    quizId: string,
-    score: number,
-    passed: boolean,
-    answers: Record<string, number>,
+    update: Partial<{ videoCompleted: boolean; slidesCompleted: boolean; quizPassed: boolean; state: string; score: number }>,
   ) => {
-    if (!user) return;
-    const path = getPathById(user.activePathId);
-    const lessonContext = path ? getLessonContext(path, lessonId) : null;
-    await saveQuizAttempt({
-      userId: user.id,
-      pathId: user.activePathId,
-      unitId: lessonContext?.unitId,
-      moduleId: lessonContext?.moduleId,
-      lessonId,
-      quizId,
-      score,
-      passed,
-      answers,
+    setProgress((current) => {
+      if (!current) return current;
+      const existing = current.lessons[lessonId];
+      if (!existing) return current;
+      return {
+        ...current,
+        lessons: {
+          ...current.lessons,
+          [lessonId]: {
+            ...existing,
+            ...update,
+            state: (update.state as typeof existing.state) || existing.state,
+          },
+        },
+      };
     });
   };
 
-  const bookSession = async (payload: { topic: string; date: string; time: string; mentorName: string }) => {
-    if (!user) return;
-    const created = await createBookingRecord({
-      userId: user.id,
-      pathId: user.activePathId,
-      mentorName: payload.mentorName,
-      topic: payload.topic,
-      date: payload.date,
-      time: payload.time,
-    });
-    setBookings((items) => [created, ...items]);
-    triggerToast('Mentor session booked.', 'success');
+  // Quiz attempts are not persisted (no quiz_attempts table in this schema);
+  // passing a quiz only affects in-session UI state via updateProgress.
+  const gradeQuiz = async () => {};
+
+  // Sessions/booking is a non-auth, non-access feature and intentionally
+  // stays as ephemeral UI state for this deployment (not persisted).
+  const bookSession = async (_payload: { topic: string; date: string; time: string; mentorName: string }) => {
+    triggerToast('Session requests are coming soon — your mentor will reach out directly for now.', 'info');
   };
 
   const submitEvidence = async (payload: {
@@ -170,31 +185,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notes: string;
   }) => {
     if (!user) throw new Error('Not authenticated');
-    const record = await createSubmission({
-      userId: user.id,
+    await createSubmissionAction({
       pathId: user.activePathId,
-      ...payload,
+      moduleId: payload.unitId,
+      type: payload.evidenceType,
+      textResponse: payload.notes,
+      fileUrl: payload.evidenceUrl,
     });
-    setSubmissions((prev) => {
-      const without = prev.filter((sub) => sub.id !== record.id);
-      return [record, ...without];
-    });
+    await loadSessionData(user.id);
     triggerToast('Evidence submitted. Your mentor will review it shortly.', 'success');
-    return record;
   };
 
   const value = useMemo<AppContextType>(
     () => ({
       user,
       isLoadingUser,
-      paths: mentorshipPaths,
       progress,
-      bookings,
-      assignments,
       submissions,
+      bookings: [],
       toast,
       triggerToast,
-      applyForMentorship,
       login,
       logout,
       refreshProgress,
@@ -203,7 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       bookSession,
       submitEvidence,
     }),
-    [user, isLoadingUser, progress, bookings, assignments, submissions, toast],
+    [user, isLoadingUser, progress, submissions, toast],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
