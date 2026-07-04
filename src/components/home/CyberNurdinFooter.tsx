@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
+import { YOUTUBE_CHANNEL_URL } from '@/lib/cybernurdin-data';
 
 const quickLinks = [
   { label: 'Home', href: '/' },
@@ -14,7 +15,13 @@ const companyLinks = [
   { label: 'Login', href: '/login' },
 ];
 
-const socials = ['f', 'x', 'in', 'yt', 'ig'];
+const socials = [
+  { label: 'f', name: 'Facebook', href: 'https://facebook.com/cybernurdin' },
+  { label: 'x', name: 'X (Twitter)', href: 'https://x.com/cybernurdin' },
+  { label: 'in', name: 'LinkedIn', href: 'https://linkedin.com/company/cybernurdin' },
+  { label: 'yt', name: 'YouTube', href: YOUTUBE_CHANNEL_URL },
+  { label: 'ig', name: 'Instagram', href: 'https://instagram.com/cybernurdin' },
+];
 
 export default function CyberNurdinFooter() {
   return (
@@ -30,10 +37,17 @@ export default function CyberNurdinFooter() {
                 Cybersecurity mentorship for serious learners ready to build real-world skills.
               </p>
               <div className="mt-5 flex gap-4 text-white">
-                {socials.map((label, index) => (
-                  <Link key={index} href="#" aria-label={`Social link ${index + 1}`} className="text-white/86 hover:text-[#F95738]">
-                    <span className="grid h-4 min-w-4 place-items-center text-xs font-black">{label}</span>
-                  </Link>
+                {socials.map((social) => (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`CyberNurdin on ${social.name}`}
+                    className="text-white/86 hover:text-[#F95738]"
+                  >
+                    <span className="grid h-4 min-w-4 place-items-center text-xs font-black">{social.label}</span>
+                  </a>
                 ))}
               </div>
             </div>

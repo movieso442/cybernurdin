@@ -13,7 +13,6 @@ import {
   ExternalLink,
   FileText,
   Lock,
-  Play,
   Send,
   Shield,
   Trophy,
@@ -25,18 +24,15 @@ import { useApp } from '@/context/AppContext';
 
 type LessonTab = 'slides' | 'notes' | 'quiz' | 'submit';
 
-export function YouTubeLessonPlayer({ videoId, title }: { videoId: string; title: string }) {
-  return (
-    <div className="aspect-video overflow-hidden rounded-xl border border-[#061C36]/10 bg-black shadow-[0_24px_64px_rgba(6,28,54,0.22)]">
-      <iframe
-        className="h-full w-full"
-        src={`https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&color=white`}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-      />
-    </div>
-  );
+/** Shortens a long URL to "host/first-path-segment…" for display, without hiding the real destination (still a real <a href>). */
+function shortResourceLabel(url: string) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const firstSegment = pathname.split('/').filter(Boolean)[0];
+    return firstSegment ? `${hostname}/${firstSegment}` : hostname;
+  } catch {
+    return url;
+  }
 }
 
 function statusBadgeStyle(status: EvidenceSubmission['status'] | 'not-submitted') {
@@ -336,13 +332,12 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
   const lessonSubmission = submissions.find((s) => s.lessonId === lesson.id);
   const submissionStatus = lessonSubmission?.status;
 
-  const videoWatched = complete?.videoCompleted;
   const slidesDone = complete?.slidesCompleted;
   const quizPassed = complete?.quizPassed;
   const lessonComplete = complete?.state === 'completed' || complete?.lessonCompleted;
 
   const percent = Math.round(
-    [videoWatched, slidesDone, quizPassed, lessonSubmission ? true : false].filter(Boolean).length / 4 * 100,
+    [slidesDone, quizPassed, lessonSubmission ? true : false].filter(Boolean).length / 3 * 100,
   );
 
   const tabs: { key: LessonTab; label: string; done: boolean }[] = [
@@ -353,7 +348,7 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
   ];
 
   const markComplete = async () => {
-    await updateProgress(lesson.id, { videoCompleted: true, slidesCompleted: true, quizPassed: true, state: 'completed' });
+    await updateProgress(lesson.id, { slidesCompleted: true, quizPassed: true, state: 'completed' });
   };
 
   return (
@@ -409,45 +404,24 @@ export function LessonView({ initialTab = 'slides' }: { initialTab?: LessonTab |
           </div>
         </section>
 
-        <YouTubeLessonPlayer videoId={lesson.youtubeVideoId} title={lesson.title} />
-        <a
-          href={lesson.youtube.watchUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1.5 text-xs font-black text-[#061C36]/48 hover:text-[#F95738]"
-        >
-          Watch on YouTube <ExternalLink size={12} />
-        </a>
-
-        <div className="mt-4 flex items-center gap-3">
-          {videoWatched ? (
-            <span className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-black text-emerald-700">
-              <CheckCircle2 size={15} /> Video watched
-            </span>
-          ) : (
-            <Button type="button" onClick={() => updateProgress(lesson.id, { videoCompleted: true, state: 'in-progress' })}>
-              <Play size={14} /> Mark Video Watched
-            </Button>
-          )}
-          {lesson.resources.length > 0 && (
-            <span className="text-xs font-bold text-[#061C36]/42">{lesson.resources.length} external resources below</span>
-          )}
-        </div>
-
         {lesson.resources.length > 0 && (
-          <div className="mt-5 rounded-xl border border-[#0B3D77]/14 bg-[#0B3D77]/4 p-5">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-wide text-[#0B3D77]">Official External Resources</p>
-            <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-xl border border-[#0B3D77]/14 bg-[#0B3D77]/4 p-5">
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#0B3D77]">Take This Course Externally</p>
+            <p className="mt-1.5 text-xs font-semibold leading-5 text-[#0B3D77]/80">
+              Follow these official resources to complete this module, then come back and submit your evidence below.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {lesson.resources.map((resource) => (
                 <a
                   key={resource}
                   href={resource}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-[#0B3D77]/16 bg-white px-4 py-3 text-sm font-bold text-[#0B3D77] hover:border-[#0B3D77]/30 hover:bg-[#0B3D77]/4 transition"
+                  title={resource}
+                  className="flex min-w-0 items-center gap-2 rounded-lg border border-[#0B3D77]/16 bg-white px-4 py-3 text-sm font-bold text-[#0B3D77] hover:border-[#0B3D77]/30 hover:bg-[#0B3D77]/4 transition"
                 >
                   <ExternalLink size={14} className="shrink-0" />
-                  <span className="truncate">{resource}</span>
+                  <span className="min-w-0 truncate">{shortResourceLabel(resource)}</span>
                 </a>
               ))}
             </div>
