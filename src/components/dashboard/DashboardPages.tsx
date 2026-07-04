@@ -23,7 +23,6 @@ import {
   Sparkles,
   Trophy,
   Upload,
-  Video,
 } from 'lucide-react';
 import { Badge, Button, Card, ProgressBar } from '@/components/UI';
 import {
@@ -463,7 +462,7 @@ export function LessonsPageView() {
     <div>
       <PageTitle
         title="Lessons"
-        body="Complete video, slides, and quiz for each lesson. Submit evidence to unlock the next module."
+        body="Work through slides and the linked external course for each lesson, pass the quiz, and submit evidence to unlock the next module."
         action={<ContinueButton href={`/learn/${path.slug}/lessons/${currentLesson?.id}`} label="Continue" />}
       />
       <div className="grid gap-3">
@@ -495,7 +494,6 @@ export function LessonsPageView() {
                     <p className="mt-1 text-[10px] font-black uppercase text-[#061C36]/38">{lesson.unit.title} / {lesson.module.title}</p>
                     <p className="mt-1.5 text-sm font-semibold leading-6 text-[#061C36]/56">{lesson.description}</p>
                     <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-black text-[#061C36]/40">
-                      <span className="flex items-center gap-1.5"><Video size={12} /> Video</span>
                       <span className="flex items-center gap-1.5"><FileText size={12} /> Slides</span>
                       <span className="flex items-center gap-1.5"><BookOpen size={12} /> Quiz</span>
                       <span className="flex items-center gap-1.5"><Upload size={12} /> Evidence</span>
