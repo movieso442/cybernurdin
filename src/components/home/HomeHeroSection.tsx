@@ -14,7 +14,7 @@ export default function HomeHeroSection() {
             Cybersecurity Mentorship That Builds <span className="text-[#F95738]">Real Defenders.</span>
           </h1>
           <p className="mt-4 max-w-[500px] text-[15px] font-medium leading-7 text-[#061C36]/78">
-            Get guided by industry professionals, follow proven paths, and build in-demand cybersecurity skills through hands-on mentorship and real-world projects.
+            Get guided by industry professionals, follow proven paths, and build in-demand cybersecurity skills through hands-on mentorship and real-world projects — cybersecurity mentorship built for learners in Cameroon and across Africa.
           </p>
           <div className="mt-7 flex flex-col gap-4 sm:flex-row">
             <Link

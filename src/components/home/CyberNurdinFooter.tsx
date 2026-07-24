@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin } from 'lucide-react';
 import CyberNurdinLogo from '@/components/shared/CyberNurdinLogo';
-import { YOUTUBE_CHANNEL_URL } from '@/lib/cybernurdin-data';
+import { socialLinks } from '@/lib/cybernurdin-data';
 
 const quickLinks = [
   { label: 'Home', href: '/' },
@@ -13,14 +13,6 @@ const companyLinks = [
   { label: 'About Us', href: '/about' },
   { label: 'Contact Us', href: '/contact' },
   { label: 'Login', href: '/login' },
-];
-
-const socials = [
-  { label: 'f', name: 'Facebook', href: 'https://facebook.com/cybernurdin' },
-  { label: 'x', name: 'X (Twitter)', href: 'https://x.com/cybernurdin' },
-  { label: 'in', name: 'LinkedIn', href: 'https://linkedin.com/company/cybernurdin' },
-  { label: 'yt', name: 'YouTube', href: YOUTUBE_CHANNEL_URL },
-  { label: 'ig', name: 'Instagram', href: 'https://instagram.com/cybernurdin' },
 ];
 
 export default function CyberNurdinFooter() {
@@ -37,7 +29,7 @@ export default function CyberNurdinFooter() {
                 Cybersecurity mentorship for serious learners ready to build real-world skills.
               </p>
               <div className="mt-5 flex gap-4 text-white">
-                {socials.map((social) => (
+                {socialLinks.map((social) => (
                   <a
                     key={social.name}
                     href={social.href}
@@ -82,12 +74,8 @@ export default function CyberNurdinFooter() {
                   hello@cybernurdin.com
                 </p>
                 <p className="flex items-center gap-3">
-                  <Phone size={17} />
-                  +234 803 123 4567
-                </p>
-                <p className="flex items-center gap-3">
                   <MapPin size={17} />
-                  Lagos, Nigeria
+                  Cameroon
                 </p>
               </div>
             </div>

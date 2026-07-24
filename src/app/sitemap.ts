@@ -4,7 +4,10 @@ import { mentorshipPaths } from '@/lib/cybernurdin-data';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cybernurdin.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ['/', '/home', '/about', '/contact', '/plans', '/courses', '/login', '/signup'].map((route) => ({
+  // Only canonical, indexable URLs — /signup, /apply/step-*, /apply/review,
+  // /apply/success, and /activate-access are duplicate or noindexed (see
+  // their page-level metadata) and intentionally excluded here.
+  const staticRoutes = ['/', '/about', '/contact', '/plans', '/courses', '/login', '/apply'].map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: new Date(),
   }));

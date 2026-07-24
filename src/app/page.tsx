@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import CyberNurdinFooter from '@/components/home/CyberNurdinFooter';
 import CyberNurdinNavbar from '@/components/home/CyberNurdinNavbar';
 import FeaturedMentorshipPathsSection from '@/components/home/FeaturedMentorshipPathsSection';
@@ -8,6 +9,10 @@ import MentorshipProcessSection from '@/components/home/MentorshipProcessSection
 import MentorshipStatsPanel from '@/components/home/MentorshipStatsPanel';
 import TestimonialsSection from '@/components/home/TestimonialsSection';
 import WhyCyberNurdinSection from '@/components/home/WhyCyberNurdinSection';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 export default function HomePage() {
   return (
