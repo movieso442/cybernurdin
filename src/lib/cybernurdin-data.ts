@@ -17,6 +17,14 @@ import {
 export const YOUTUBE_CHANNEL_ID = 'UCR_9LH8ztK2gH6u-EOvI4bA';
 export const YOUTUBE_CHANNEL_URL = `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}`;
 
+export const socialLinks = [
+  { label: 'f', name: 'Facebook', href: 'https://facebook.com/cybernurdin' },
+  { label: 'x', name: 'X (Twitter)', href: 'https://x.com/cybernurdin' },
+  { label: 'in', name: 'LinkedIn', href: 'https://linkedin.com/company/cybernurdin' },
+  { label: 'yt', name: 'YouTube', href: YOUTUBE_CHANNEL_URL },
+  { label: 'ig', name: 'Instagram', href: 'https://instagram.com/cybernurdin' },
+];
+
 export const channelVideoIds = [
   'ytQ-OPwnkrA',
   'dy8rKQhk6C8',

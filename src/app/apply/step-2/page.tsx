@@ -1,5 +1,10 @@
 import { ApplicationFlow } from '@/components/apply/ApplicationFlow';
 
+// Mid-funnel step, not a landing page — keep it out of the index.
+export const metadata = {
+  robots: { index: false, follow: true },
+};
+
 export default function ApplyStepTwoPage() {
   return <ApplicationFlow initialStep={1} />;
 }

@@ -17,17 +17,12 @@
     "db:rls": "tsx --env-file=.env.local scripts/apply-rls.ts",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
     "verify:live": "tsx --env-file=.env.local scripts/verify-live.ts",
-    "generate-coupon": "tsx --env-file=.env.local scripts/generate-coupon.ts",
-    "firebase:seed": "node scripts/seed-firestore.mjs",
-    "firebase:seed:admin": "node scripts/seed-firestore-admin.mjs",
-    "firebase:seed:dry": "node scripts/seed-firestore.mjs --dry-run",
-    "firebase:collections": "node scripts/check-firestore-collections.mjs"
+    "generate-coupon": "tsx --env-file=.env.local scripts/generate-coupon.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.0",
     "drizzle-orm": "^0.45.2",
-    "firebase": "^11.2.0",
     "framer-motion": "^12.39.0",
     "lucide-react": "^1.16.0",
     "next": "^15.1.6",
@@ -45,7 +40,6 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.19.0",
     "eslint-config-next": "^15.1.6",
-    "firebase-admin": "^13.10.0",
     "postcss": "^8.5.1",
     "tsx": "^4.22.5",
     "typescript": "^5.7.3"

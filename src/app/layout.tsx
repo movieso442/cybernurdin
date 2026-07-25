@@ -2,25 +2,42 @@ import '@/app/globals.css';
 import type { Metadata } from 'next';
 import { AppProvider } from '@/context/AppContext';
 import ToastContainer from '@/components/ToastContainer';
+import { SiteStructuredData } from '@/components/seo/StructuredData';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cybernurdin.com'),
   applicationName: 'CyberNurdin',
   manifest: '/site.webmanifest',
   title: {
-    default: 'CyberNurdin — Cybersecurity Mentorship Platform',
+    default: 'CyberNurdin — Cybersecurity Mentorship Platform in Cameroon',
     template: '%s | CyberNurdin',
   },
   description:
-    'CyberNurdin is a premium cybersecurity mentorship platform that helps beginners build cybersecurity foundations through structured lessons, clean slides, practical tasks, curated resources, and mentor-guided progression.',
+    'CyberNurdin is a premium cybersecurity mentorship platform that helps beginners in Cameroon and beyond build cybersecurity foundations through structured lessons, clean slides, practical tasks, curated resources, and mentor-guided progression.',
   keywords: [
     'cybersecurity mentorship',
     'cybersecurity training for beginners',
     'Introduction to Cybersecurity course',
     'cybersecurity learning path',
     'cybersecurity mentorship in Cameroon',
+    'cybersecurity mentorship for students',
+    'cybersecurity training Cameroon',
     'practical cybersecurity learning',
+    'learn cybersecurity online Africa',
   ],
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     type: 'website',
     siteName: 'CyberNurdin',
@@ -59,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <SiteStructuredData />
         <AppProvider>
           {children}
           <ToastContainer />

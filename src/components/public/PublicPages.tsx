@@ -15,7 +15,6 @@ import {
   Lock,
   Mail,
   MessageSquare,
-  Phone,
   Search,
   ShieldCheck,
   Target,
@@ -360,7 +359,7 @@ export function AboutPageView() {
         eyebrow="Our story, mission, and commitment"
         title="CyberNurdin is built to turn serious learners into"
         accent="real defenders."
-        description="CyberNurdin is a cybersecurity mentorship platform for learners who want structure, practical work, mentor review, and a clear path toward career-ready confidence."
+        description="CyberNurdin is a cybersecurity mentorship platform for learners who want structure, practical work, mentor review, and a clear path toward career-ready confidence — proudly serving learners in Cameroon and beyond."
       />
 
       <section className="cn-container pb-16 md:pb-20">
@@ -576,22 +575,22 @@ export function ContactPageView() {
         </Card>
         <div className="space-y-5">
           <Card className="p-6">
-            <Phone className="text-[#F95738]" size={24} />
-            <h2 className="mt-4 text-lg font-black">WhatsApp Support</h2>
+            <Mail className="text-[#F95738]" size={24} />
+            <h2 className="mt-4 text-lg font-black">Email Support</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Quick mentorship inquiries and application support.</p>
-            <a href="https://wa.me/2348021234567" target="_blank" rel="noreferrer" className="mt-4 block">
-              <Button className="w-full">Chat on WhatsApp</Button>
+            <a href="mailto:hello@cybernurdin.com" className="mt-4 block">
+              <Button className="w-full">Email Us</Button>
             </a>
           </Card>
           <Card className="p-6">
             <Clock className="text-[#F95738]" size={24} />
             <h2 className="mt-4 text-lg font-black">Office Hours</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Mon - Sat, 9:00 AM - 7:00 PM WAT. Messages outside office hours are reviewed on the next support cycle.</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Mon - Sat, 9:00 AM - 7:00 PM WAT (Cameroon time). Messages outside office hours are reviewed on the next support cycle.</p>
           </Card>
           <Card className="p-6">
             <MessageSquare className="text-[#F95738]" size={24} />
             <h2 className="mt-4 text-lg font-black">Other Ways to Reach Us</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Email: support@cybernurdin.com</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Email: hello@cybernurdin.com</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-[#061C36]/64">Channel content: <a className="text-[#F95738]" href={YOUTUBE_CHANNEL_URL}>CyberNurdin YouTube</a></p>
           </Card>
         </div>
