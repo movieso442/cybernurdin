@@ -63,7 +63,7 @@ Real Supabase Auth (cookie-based sessions via `@supabase/ssr`, refreshed in `mid
 This is a standard Next.js app — no static export, no custom server required.
 
 - **Root directory:** repository root (`package.json` lives here)
-- **Node version:** 20.x (pinned via `engines` in `package.json`)
+- **Node version:** 22.x (pinned via `engines` in `package.json`)
 - **Install command:** `npm install`
 - **Build command:** `npm run build`
 - **Start command:** `npm run start`
